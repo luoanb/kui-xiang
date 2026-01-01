@@ -1,0 +1,32 @@
+---
+description: 项目结构和文件组织规范
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# 项目结构规则
+
+## 目录组织
+- `src/` 存放前端源码，按功能模块划分
+- `electron/` 存放 Electron 主进程和服务器代码
+- `packages/` 存放 monorepo 子包，每个包独立维护
+- `public/` 存放静态资源，构建时直接复制
+- `docs/` 存放文档，使用 VitePress 构建
+
+## 文件命名
+- Vue 组件使用 PascalCase：`UserProfile.vue`
+- TypeScript 文件使用 camelCase：`userService.ts`
+- 工具函数文件使用 camelCase：`formatDate.ts`
+- 常量文件使用 UPPER_SNAKE_CASE：`API_CONSTANTS.ts`
+- 配置文件使用 kebab-case：`vite.config.ts`
+
+## 模块划分
+- 按功能领域划分模块，每个模块包含组件、服务、类型定义
+- 共享组件放在 `src/components/` 或 `packages/` 中
+- 业务逻辑放在 `src/composables/` 或 `src/stores/`
+- API 调用统一放在 `src/services/` 或 `electron/server/`
+
+## 导入规范
+- 使用绝对路径导入，配置 `@/` 别名指向 `src/`
+- 第三方库导入放在最前面
+- 本地导入按层级分组，用空行分隔
