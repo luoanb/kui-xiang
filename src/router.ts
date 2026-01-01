@@ -1,6 +1,7 @@
 import { createWebHistory, createWebHashHistory, createRouter } from 'vue-router'
 
 import Chat from '@/pages/chat.vue'
+import Team from '@/pages/team.vue'
 import Discover from '@/pages/discover.vue'
 import Setting from '@/pages/setting.vue'
 import Mcp from '@/pages/mcp.vue'
@@ -21,6 +22,7 @@ const analytics = Analytics({
 
 const routes = [
   { path: '/', component: Chat },
+  { path: '/team', component: Team },
   { path: '/rag', component: Rag },
   { path: '/discover', component: Discover },
   { path: '/setting', component: Setting },

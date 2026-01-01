@@ -1,0 +1,60 @@
+---
+description: 多语言支持规范
+globs: ["src/**/*.{ts,vue}", "packages/**/*.{ts,vue}"]
+alwaysApply: true
+---
+
+# 多语言支持规范
+
+## 国际化配置
+- 使用 `vue-i18n` 库实现多语言支持
+- 配置文件位于 `src/i18n/index.ts`
+- 支持的语言：`en-US`（英语）和 `zh-CN`（简体中文）
+- 语言类型定义：`type AvailableLanguages = 'en-US' | 'zh-CN'`
+
+## 语言文件组织
+- 语言文件位于 `src/locales/` 目录
+- 每种语言有独立的 JSON 文件：`src/locales/zh/index.json` 和 `src/locales/en/index.json`
+- 语言文件使用嵌套的 JSON 结构，按功能模块组织键名
+- 键名使用 camelCase，层级使用点号分隔，如 `chat.sidebar.newChat`
+
+## 使用方式
+- 在组件中使用 `useI18n()` 获取翻译函数：`const { t } = useI18n()`
+- 在模板中使用 `t('key')` 获取翻译文本
+- 在脚本中使用 `t('key')` 获取翻译文本
+- 支持参数插值，使用 `{param}` 占位符，如 `t('chat.sidebar.confirmDeleteDesc', { title: '对话名称' })`
+- 示例：
+  - ✅ `const { t } = useI18n()` 然后 `{{ t('common.ok') }}`
+  - ✅ `const title = t('chat.sidebar.newChat')`
+  - ✅ `t('chat.sidebar.confirmDeleteDesc', { title: chatTitle })`
+
+## 语言切换
+- 使用 `setLanguage(lang: AvailableLanguages)` 函数切换语言
+- 语言设置会自动保存到 `localStorage`，键名为 `language`
+- 切换语言后需要刷新页面以应用更改
+- 语言切换组件参考：`src/components/setting/LanguageSwitcher.vue`
+
+## 翻译键命名规范
+- 使用有意义的键名，反映功能模块和用途
+- 键名结构：`模块.子模块.功能`，如 `chat.sidebar.newChat`、`settings.modelSelect.selectModel`
+- 通用文本放在 `common` 模块下，如 `common.ok`、`common.cancel`、`common.save`
+- 避免使用过于简短的键名，如 `ok`、`cancel`，应使用 `common.ok`、`common.cancel`
+
+## 新增翻译
+- 新增功能时，必须同时添加中英文翻译
+- 翻译键名应遵循现有的命名规范和组织结构
+- 在 `src/locales/zh/index.json` 和 `src/locales/en/index.json` 中同步添加
+- 保持两个语言文件的结构一致，确保所有键名都存在
+
+## 翻译文本规范
+- 中文翻译使用简体中文
+- 英文翻译使用美式英语（en-US）
+- 翻译文本应简洁明了，符合用户界面用语习惯
+- 避免在翻译文本中包含代码或技术术语（除非必要）
+- 日期、时间等格式化文本使用国际化格式，参考 `common.timeGroup` 中的配置
+
+## 语言检测
+- 应用启动时自动检测用户浏览器语言
+- 优先使用用户保存的语言设置（localStorage）
+- 如果没有保存的设置，则根据浏览器语言自动选择
+- 默认回退语言为 `en-US`
