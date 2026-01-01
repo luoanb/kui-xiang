@@ -87,6 +87,8 @@
       "refreshSuccess": "Refresh Successful",
       "refreshSuccessDesc": "MCP server list has been updated",
       "refreshFailed": "Refresh Failed",
+      "updateSuccess": "Update Successful",
+      "updateSuccessDesc": "Updated {name}",
       "startSuccess": "Start Successful",
       "startSuccessDesc": "Started {name}",
       "startFailed": "Start Failed",

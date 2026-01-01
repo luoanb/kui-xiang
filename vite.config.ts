@@ -168,6 +168,7 @@ export default defineConfig(({ command }) => {
         return {
           host: url.hostname,
           port: +url.port,
+          open: false,
         }
       })(),
     clearScreen: false,

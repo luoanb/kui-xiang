@@ -86,6 +86,8 @@
       "refreshSuccess": "刷新成功",
       "refreshSuccessDesc": "MCP服务器列表已更新",
       "refreshFailed": "刷新失败",
+      "updateSuccess": "更新成功",
+      "updateSuccessDesc": "已更新 {name}",
       "startSuccess": "启动成功",
       "startSuccessDesc": "已启动 {name}",
       "startFailed": "启动失败",

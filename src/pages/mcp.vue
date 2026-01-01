@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-vue-next"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ref, onMounted, computed } from "vue"
+import { ref, onMounted, computed, watch } from "vue"
 import { SquareArrowOutUpRight, PlusCircle, RefreshCw, Edit, Trash2, Play, Square } from "lucide-vue-next"
 import { useI18n } from "vue-i18n"
 import mcpMock from '@/api/mcpMock.json'
@@ -150,6 +150,19 @@ onMounted(async () => {
   await mcpStore.fetchInstalledServers()
 })
 
+// 调试用：监控并打印已安装服务器列表的变化，便于排查 enabled 字段
+watch(
+  () => mcpStore.installedServers,
+  (val) => {
+    try {
+      console.log('[mcp.vue] installedServers changed:', JSON.parse(JSON.stringify(val)))
+    } catch (e) {
+      console.log('[mcp.vue] installedServers changed:', val)
+    }
+  },
+  { deep: true }
+)
+
 // 删除确认对话框状态
 const showDeleteDialog = ref(false)
 const mcpToDelete = ref(null)
@@ -194,8 +207,13 @@ const loadingMcps = ref<Record<string, boolean>>({}) // 记录每个MCP的loadin
 
 // 新增：处理启用/禁用MCP服务器的方法
 const toggleEnabledStatus = async (mcp: any) => {
-  const newEnabledStatus = !(mcp.config?.enabled ?? true)
+  const newEnabledStatus = !(mcp.config?.enabled !== false)
   loadingMcps.value[mcp.key] = true
+  
+  // 保存原始状态用于失败时恢复
+  const originalEnabled = mcp.config?.enabled !== false
+  const originalStatus = mcp.status
+  
   try {
     const serverData = {
       [mcp.key]: {
@@ -203,13 +221,41 @@ const toggleEnabledStatus = async (mcp: any) => {
         enabled: newEnabledStatus,
       },
     }
+    
+    // 等待后端更新完成
     await mcpStore.updateMcpServer(serverData)
+    
+    // 处理服务的启动/停止逻辑
+    // 如果启用服务且服务未运行，则启动服务
+    if (newEnabledStatus && mcp.status !== 'running') {
+      try {
+        await mcpStore.startMcpServer(mcp.key)
+        mcp.status = 'running'
+      } catch (error) {
+        console.error('启动服务失败:', error)
+      }
+    }
+    // 如果禁用服务且服务正在运行，则停止服务
+    else if (!newEnabledStatus && mcp.status === 'running') {
+      try {
+        await mcpStore.stopMcpServer(mcp.key)
+        mcp.status = 'stopped'
+      } catch (error) {
+        console.error('停止服务失败:', error)
+      }
+    }
+    
     const displayName = getDisplayName(mcp)
     toast({
       title: t('mcp.messages.updateSuccess'),
       description: t('mcp.messages.updateSuccessDesc', { name: displayName }),
     })
   } catch (error) {
+    // 如果失败，恢复原始状态
+    if (mcp.config) {
+      mcp.config.enabled = originalEnabled
+    }
+    mcp.status = originalStatus
     toast({
       title: t('mcp.messages.updateFailed'),
       description: (error as Error).message || t('mcp.messages.unknownError'),
@@ -322,8 +368,8 @@ const opendoc = () => {
               <div class="flex items-center">
                 <!-- 启用/禁用开关 -->
                 <Switch
-                  :checked="item.config?.enabled ?? true"
-                  @update:checked="() => toggleEnabledStatus(item)"
+                  :modelValue="item.config?.enabled ?? true"
+                  @update:modelValue="() => toggleEnabledStatus(item)"
                   :disabled="loadingMcps[item.key]"
                   class="mr-2"
                 />
