@@ -4,6 +4,8 @@ import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PopoverAnchor } from "reka-ui";
 import { CornerDownLeft, Mic, Star } from "lucide-vue-next";
 import UseTool from "@/components/chat/UseTool.vue";
 import UseKnowledgeBase from "@/components/chat/UseKnowledgeBase.vue";
@@ -36,10 +38,10 @@ const sessionStore = useSessionStore();
 const prompts = ref<TeamPrompt[]>([]); // 实际使用的提示词列表（不包含"无"）
 const menuPrompts = ref<TeamPrompt[]>([]); // 菜单显示的提示词列表（包含"无"）
 const showPromptMenu = ref(false);
-const promptMenuPosition = ref({ top: 0, left: 0 });
 const selectedPromptId = ref<string>("");
 const selectedMenuPromptId = ref<string>(""); // 菜单中选中的提示词ID
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const popoverTriggerRef = ref<HTMLElement | null>(null); // Popover trigger 引用
 const slashIndex = ref(-1); // 记录 "/" 的位置
 
 // 加载提示词列表（用于菜单显示，包含"无"选项）
@@ -268,41 +270,35 @@ const handleKeyDown = async (e: KeyboardEvent) => {
         if (menuPrompts.value.length > 0) {
           selectedMenuPromptId.value = menuPrompts.value[0].id;
         }
-        showPromptMenu.value = true;
+        // 更新 anchor 位置，然后打开菜单（Popover 会自动定位）
         nextTick(() => {
-          updateMenuPosition();
+          updatePopoverAnchorPosition();
+          showPromptMenu.value = true;
         });
       }
     }
   }
 };
 
-// 更新菜单位置（显示在输入框上方）
-const updateMenuPosition = () => {
-  // 获取原生 textarea 元素
+// 更新 Popover anchor 位置到输入框顶部
+// Popover 会自动将 Content 定位到 anchor 上方，菜单底部会贴着输入框顶部
+const updatePopoverAnchorPosition = () => {
   const textarea = (textareaRef.value as any)?.$el || textareaRef.value;
-  if (!textarea) return;
+  if (!textarea || !popoverTriggerRef.value) return;
 
   const rect = textarea.getBoundingClientRect();
   
-  // 计算光标所在行的位置
-  const textBeforeCursor = msg.value.substring(0, slashIndex.value);
-  const lines = textBeforeCursor.split("\n");
-  const currentLine = lines.length - 1;
-  
-  // 获取行高
-  const style = window.getComputedStyle(textarea);
-  const lineHeight = parseFloat(style.lineHeight) || 24;
-  const paddingTop = parseFloat(style.paddingTop) || 0;
-  
-  // 计算光标所在行的顶部位置
-  const cursorLineTop = rect.top + paddingTop + (currentLine * lineHeight);
-  
-  // 菜单显示在光标行上方，留4px间距
-  promptMenuPosition.value = {
-    top: cursorLineTop - 4,
-    left: rect.left + 10,
-  };
+  // 将 anchor 定位到输入框顶部，Popover 的 side="top" 会让菜单显示在 anchor 上方
+  // sideOffset 控制菜单底部和 anchor 之间的间距，设为 0 让菜单底部贴着输入框顶部
+  Object.assign(popoverTriggerRef.value.style, {
+    position: 'fixed',
+    top: `${rect.top}px`,
+    left: `${rect.left + 10}px`,
+    width: '1px',
+    height: '1px',
+    pointerEvents: 'none',
+    opacity: '0',
+  });
 };
 
 // 选择提示词
@@ -344,6 +340,28 @@ const selectPrompt = (promptId: string) => {
       textarea.setSelectionRange(newCursorPos, newCursorPos);
     }
   });
+};
+
+// 处理菜单内的键盘事件
+const handleMenuKeyDown = (e: KeyboardEvent) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const currentIndex = menuPrompts.value.findIndex(
+      (p) => p.id === selectedMenuPromptId.value
+    );
+    if (e.key === "ArrowDown") {
+      const nextIndex =
+        currentIndex < menuPrompts.value.length - 1 ? currentIndex + 1 : 0;
+      selectedMenuPromptId.value = menuPrompts.value[nextIndex].id;
+    } else {
+      const prevIndex =
+        currentIndex > 0 ? currentIndex - 1 : menuPrompts.value.length - 1;
+      selectedMenuPromptId.value = menuPrompts.value[prevIndex].id;
+    }
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    selectPrompt(selectedMenuPromptId.value);
+  }
 };
 
 // 监听输入变化，如果 "/" 被删除或输入其他内容，关闭菜单
@@ -438,14 +456,18 @@ const handleRecord = () => {
     </form>
 
     <!-- 提示词选择菜单 -->
-    <Teleport to="body">
-      <div
-        v-if="showPromptMenu && menuPrompts.length > 0"
-        class="fixed z-[9999] w-64 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-        :style="{
-          top: `${promptMenuPosition.top}px`,
-          left: `${promptMenuPosition.left}px`,
-        }"
+    <Popover v-model:open="showPromptMenu">
+      <!-- 隐藏的 anchor，用于定位 -->
+      <PopoverAnchor as-child>
+        <div ref="popoverTriggerRef" class="absolute pointer-events-none opacity-0" />
+      </PopoverAnchor>
+      <PopoverContent
+        v-if="menuPrompts.length > 0"
+        side="top"
+        align="start"
+        :side-offset="0"
+        class="w-64 p-1"
+        @keydown="handleMenuKeyDown"
       >
         <div class="max-h-64 overflow-y-auto">
           <div
@@ -465,8 +487,8 @@ const handleRecord = () => {
             <div class="text-sm font-medium truncate">{{ prompt.title }}</div>
           </div>
         </div>
-      </div>
-    </Teleport>
+      </PopoverContent>
+    </Popover>
   </div>
 </template>
 
