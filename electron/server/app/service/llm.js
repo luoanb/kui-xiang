@@ -472,6 +472,8 @@ class LLMService extends BaseLLMService {
       messages,
       sessionId,
       config,
+      tools, // 添加 tools 到 loopArgs，以便在重新发起对话时使用
+      context, // 添加 context 到 loopArgs，以便在重新发起对话时使用
     }
     try {
       // 检测状态5：结果已保存但AI未处理

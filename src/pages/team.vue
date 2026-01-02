@@ -21,7 +21,7 @@ import ChatInputTeam from "@/components/chat/ChatInputTeam.vue";
 import ModelSelect from "@/components/ModelSelect.vue";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import Theme from "@/components/Theme.vue";
-import { chatApi, llmApi } from "@/api/request";
+import { chatApi, llmApi, teamPromptApi } from "@/api/request";
 import {
   PanelLeft,
   PanelRight,
@@ -77,10 +77,8 @@ watch(
   { deep: true }
 );
 
-const tools = computed(() => {
-  const result = mcpStore.getSelectedTools;
-  return result;
-});
+// MCP 开关（使用 store 中的 toolsEnabled）
+const enableMcp = computed(() => mcpStore.toolsEnabled);
 
 const knowledge = computed(() => {
   return ragStore.getUsingBases;
@@ -148,7 +146,7 @@ const sendMsgLocalOllama = async (model: LLMModel, msg: string) => {
         }
         lastMessage.reasoning_content += reasoning_content;
       },
-      tools.value,
+      [], // 本地对话不使用工具
       knowledge.value?.join(","),
       promptConfig,
       abortController.value.signal, // 传递AbortSignal
@@ -205,7 +203,11 @@ const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
       frequency_penalty: selectedPrompt.value.frequency_penalty?.[0] ?? 0,
     } : undefined;
 
-    await llmApi.sendMessageLlm(
+    // 记录是否是第一次对话（用于标题更新）
+    const isFirstMessage = chatHistory.value.length === 2 && activeSession.value.title === '👋 Hi';
+    
+    // 使用 Team 对话 API，传递 enableMcp 开关
+    await teamPromptApi.sendMessage(
       model,
       messages,
       activeSession.value.id,
@@ -220,13 +222,44 @@ const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
         }
         lastMessage.reasoning_content += reasoning_content;
       },
-      tools.value,
       knowledge.value?.join(","),
       promptConfig,
+      enableMcp.value, // 传递 MCP 开关（使用 computed 的值）
       abortController.value.signal, // 传递AbortSignal
-      () => {
+      async () => {
         // 流式响应结束的回调
         isStreaming.value = false;
+        
+        // 如果是第一次对话，更新标题
+        if (isFirstMessage) {
+          try {
+            const config = {
+              model: chatStore.model,
+              messages: chatHistory.value,
+              sessionId: activeSession.value,
+            };
+            const summaryRes = await chatApi.summarySession(config);
+            console.log('[team_vue]', '标题更新结果:', summaryRes);
+            
+            // 同步更新 activeSession、sessionStore.currentSession 和 sessionStore.sessions
+            if (summaryRes && summaryRes.title) {
+              activeSession.value.title = summaryRes.title;
+              
+              // 更新 sessionStore 中的会话标题
+              if (sessionStore.currentSession?.id === activeSession.value.id) {
+                sessionStore.currentSession.title = summaryRes.title;
+              }
+              
+              // 更新会话列表中的标题
+              const sessionInList = sessionStore.sessions.find(s => s.id === activeSession.value.id);
+              if (sessionInList) {
+                sessionInList.title = summaryRes.title;
+              }
+            }
+          } catch (error) {
+            console.error('[team_vue]', '更新标题失败:', error);
+          }
+        }
       },
     );
   } catch (error: any) {

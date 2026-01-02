@@ -216,6 +216,85 @@ class TeamPromptService extends Service {
       throw new Error('删除团队提示词配置失败: ' + error.message)
     }
   }
+
+  /**
+   * Team 对话 API
+   * @param {Object} model - 模型配置
+   * @param {Object} provider - 提供商配置
+   * @param {Array} messages - 消息列表
+   * @param {string} sessionId - 会话ID
+   * @param {Object} config - 配置
+   * @param {boolean} enableMcp - 是否启用 MCP（如果为 true，自动获取所有正在运行的 MCP 工具）
+   * @param {any} msgSaved - 消息保存状态
+   * @param {Array} context - 知识库上下文
+   */
+  async chat(model, provider, messages, sessionId, config, enableMcp, msgSaved, context) {
+    const { ctx } = this
+    const llmService = ctx.service.llm
+    let tools = null
+
+    // 如果启用了 MCP，自动获取所有正在运行且启用的 MCP 工具
+    if (enableMcp) {
+      try {
+        ctx.logger.info('[TeamPromptService] 启用 MCP，开始获取正在运行的 MCP 工具')
+        
+        // 获取所有已安装的 MCP 服务器
+        const installedServers = await ctx.service.mcp.getInstalledServers()
+        
+        // 过滤出正在运行且启用的服务器
+        const runningServers = installedServers.filter(server => {
+          const isRunning = server.status === 'running'
+          const isEnabled = server.config?.enabled !== false // 默认为 true，只有显式设置为 false 才禁用
+          return isRunning && isEnabled
+        })
+
+        ctx.logger.info('[TeamPromptService] 找到正在运行且启用的 MCP 服务器:', runningServers.map(s => s.key))
+
+        // 获取所有正在运行的服务器的工具列表
+        const allTools = []
+        for (const server of runningServers) {
+          try {
+            const serverTools = await ctx.service.mcp.getTool(server.key)
+            if (serverTools && serverTools.tools && serverTools.tools.length > 0) {
+              allTools.push(...serverTools.tools)
+              ctx.logger.info(`[TeamPromptService] 从服务器 ${server.key} 获取到 ${serverTools.tools.length} 个工具`)
+            }
+          } catch (error) {
+            ctx.logger.error(`[TeamPromptService] 获取服务器 ${server.key} 的工具失败:`, error)
+            // 继续处理其他服务器，不中断流程
+          }
+        }
+
+        if (allTools.length > 0) {
+          tools = allTools
+          ctx.logger.info(`[TeamPromptService] 总共获取到 ${allTools.length} 个 MCP 工具`)
+        } else {
+          ctx.logger.info('[TeamPromptService] 未找到可用的 MCP 工具')
+        }
+      } catch (error) {
+        ctx.logger.error('[TeamPromptService] 获取 MCP 工具失败:', error)
+        // MCP 获取失败不影响对话流程，继续执行
+      }
+    }
+
+    // 调用 LLMService 的 chat 方法
+    try {
+      const result = await llmService.chat(
+        model,
+        provider,
+        messages,
+        sessionId,
+        config,
+        tools,
+        msgSaved,
+        context
+      )
+      return result
+    } catch (error) {
+      ctx.logger.error('[TeamPromptService] Team 对话失败:', error)
+      throw error
+    }
+  }
 }
 
 module.exports = TeamPromptService

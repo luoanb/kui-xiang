@@ -43,7 +43,7 @@ export default function remarkPlugin() {
           // 显示名称处理
           const displayName = toolInfo.name
             ? toolInfo.name.replace(/^mcp_[^_]+_/, '')
-            : '未知工具'
+            : 'MCP调用'
 
           data.hName = 'div'
           data.hProperties = {

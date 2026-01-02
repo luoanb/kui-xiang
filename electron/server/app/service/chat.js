@@ -116,27 +116,43 @@ class ChatService extends Service {
             msgSaved,
           )
           
-          // 确保当前响应已正确结束
-          if (!ctx.res.writableEnded) {
-            ctx.res.end()
-            hasEnded = true
-          }
-          
           // 使用更新后的消息重新发起对话
           ctx.logger.info('工具调用完成，重新发起对话')
-          const { model, provider, messages, config } = loopArgs
+          const { model, provider, messages, config, tools } = loopArgs
           // todo，重新查询最新消息
-          messages.push({
+          const updatedMessages = [...messages]
+          updatedMessages.push({
             role: 'assistant',
             content: toolSaveRes.join('\n'),
           })
-          await ctx.service.llm.chat(
+          
+          // 重新获取 stream 并继续处理，不要结束当前响应
+          const lastMessage = updatedMessages[updatedMessages.length - 1]
+          const chatService = ctx.service.chat
+          const docs = await ctx.service.llm.getDocsByContextId(loopArgs.context || [], lastMessage)
+          const service = ctx.service.llm.getProviderService(provider)
+          const sessionSettings = await chatService.getSettings(sessionId)
+          const newStream = await service.chat(
             model,
-            provider,
-            messages,
-            sessionId,
+            updatedMessages,
             config,
-            [],
+            sessionSettings,
+            tools || [],
+            docs,
+          )
+          
+          // 继续处理新的 stream，使用更新后的 messages
+          const newLoopArgs = {
+            ...loopArgs,
+            messages: updatedMessages,
+          }
+          await this.handleStream(
+            newStream,
+            ctx,
+            updatedMessages,
+            sessionId,
+            model,
+            newLoopArgs,
             msgSaved,
           )
           return
@@ -182,27 +198,43 @@ class ChatService extends Service {
               msgSaved,
             )
             
-            // 确保当前响应已正确结束
-            if (!ctx.res.writableEnded) {
-              ctx.res.end()
-              hasEnded = true
-            }
-            
-            // 使用更新后的消息重新发起对话（在新的请求中）
-            ctx.logger.info('工具调用完成，将在下次对话时继续处理')
-            // 注意：不在当前响应中继续，而是保存状态，让下次对话时自动恢复
-            // 这样可以避免响应混乱和loading状态丢失
-            const { model, provider, messages, config } = loopArgs
-            messages.push({
+            // 使用更新后的消息重新发起对话，继续在当前响应中处理
+            ctx.logger.info('工具调用完成，重新发起对话')
+            const { model, provider, messages, config, tools, context } = loopArgs
+            const updatedMessages = [...messages]
+            updatedMessages.push({
               role: 'assistant',
               content: toolSaveRes.join('\n'),
             })
-            // 保存消息以便下次对话时自动恢复
-            await this.saveMsg(
-              'default-user',
-              'assistant',
-              toolSaveRes.join('\n'),
+            
+            // 重新获取 stream 并继续处理，不要结束当前响应
+            const lastMessage = updatedMessages[updatedMessages.length - 1]
+            const chatService = ctx.service.chat
+            const docs = await ctx.service.llm.getDocsByContextId(context || [], lastMessage)
+            const service = ctx.service.llm.getProviderService(provider)
+            const sessionSettings = await chatService.getSettings(sessionId)
+            const newStream = await service.chat(
+              model,
+              updatedMessages,
+              config,
+              sessionSettings,
+              tools || [],
+              docs,
+            )
+            
+            // 继续处理新的 stream，使用更新后的 messages
+            const newLoopArgs = {
+              ...loopArgs,
+              messages: updatedMessages,
+            }
+            await this.handleStream(
+              newStream,
+              ctx,
+              updatedMessages,
               sessionId,
+              model,
+              newLoopArgs,
+              msgSaved,
             )
             return
           } catch (error) {

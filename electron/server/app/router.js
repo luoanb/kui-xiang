@@ -23,6 +23,7 @@ module.exports = app => {
   router.post('/api/team-prompt', controller.teamPrompt.create)
   router.put('/api/team-prompt/:id', controller.teamPrompt.update)
   router.delete('/api/team-prompt/:id', controller.teamPrompt.delete)
+  router.post('/api/team/chat', controller.teamPrompt.chat)
 
   router.get('/api/ollama/models', controller.ollama.getLocalOllamaModels)
   router.get('/api/ollama/sync', controller.ollama.syncModelFromOllama)

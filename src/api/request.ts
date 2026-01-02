@@ -718,7 +718,7 @@ export interface TeamPrompt {
 
 export interface TeamPromptConfig {
   id: string
-  title: string
+  title?: string // 标题字段可选，如果没有值可以使用会话标题作为默认值
   prompts: TeamPrompt[]
   createdAt: number
   updatedAt: number
@@ -748,6 +748,68 @@ export const teamPromptApi = {
   // 删除团队提示词配置
   async delete(id: string | number): Promise<{ success: boolean }> {
     return request.delete<{ success: boolean }>(`/api/team-prompt/${id}`)
+  },
+
+  // Team 对话 API（支持自动获取 MCP 工具）
+  async sendMessage(
+    model: LLMModel,
+    messages: Array<{ role: string; content: string }>,
+    sessionId,
+    onProgress?: (content: string) => void,
+    onProgressReasoning?: (reasoning_content: string) => void,
+    context?: string,  // 知识库
+    promptConfig?: { // 提示词配置（用于 team 功能）
+      temperature?: number;
+      top_p?: number;
+      presence_penalty?: number;
+      frequency_penalty?: number;
+    },
+    enableMcp?: boolean, // MCP 开关，如果为 true，后端自动获取所有正在运行的 MCP 工具
+    signal?: AbortSignal, // AbortSignal用于取消请求
+    onStreamEnd?: () => void, // 流式响应结束的回调
+  ) {
+    const provider = model.provider_id
+
+    const requestBody: any = { model, provider, messages, sessionId }
+    
+    // 只有当context存在且不为空时才添加到请求体中
+    if (context && context.trim() !== '') {
+      requestBody.context = context
+    }
+
+    // 如果提供了 promptConfig，添加到请求体中
+    if (promptConfig) {
+      requestBody.promptConfig = promptConfig
+    }
+
+    // 如果提供了 enableMcp，添加到请求体中
+    if (enableMcp !== undefined) {
+      requestBody.enableMcp = enableMcp
+    }
+
+    try {
+      const fetchOptions: RequestInit = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept-Language': i18n.global.locale.value,
+        },
+        body: JSON.stringify(requestBody),
+      }
+      // 只有当signal存在时才添加
+      if (signal) {
+        fetchOptions.signal = signal
+      }
+      const response = await fetch(API_BASE_URL + '/api/team/chat', fetchOptions)
+      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd)
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('[request_ts]', '请求已取消')
+        throw error
+      }
+      console.error('[request_ts] Team 对话错误:', error)
+      throw error
+    }
   },
 }
 

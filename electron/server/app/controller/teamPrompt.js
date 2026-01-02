@@ -74,6 +74,39 @@ class TeamPromptController extends Controller {
       ctx.body = ctx.helper.error(error.message)
     }
   }
+
+  /**
+   * Team 对话 API
+   * 支持自动获取正在运行的 MCP 工具
+   */
+  async chat() {
+    const { ctx } = this
+    const { model, provider, messages, sessionId, config, context, promptConfig, enableMcp } = ctx.request.body
+    const uid = ctx.request.query.uid || 'default-user'
+    let ragBaseIds = []
+    if(context && typeof context === 'string') {
+      ragBaseIds = context.split(',')
+    }
+    try {
+      // 如果提供了 promptConfig，将其合并到 config 中
+      const mergedConfig = promptConfig ? { ...config, promptConfig } : config
+      // TeamPromptService.chat 内部会处理流式响应和错误
+      await ctx.service.teamPrompt.chat(
+        model,
+        provider,
+        messages,
+        sessionId,
+        mergedConfig,
+        enableMcp,
+        null,
+        ragBaseIds
+      )
+      // 流式响应已经在 service 层处理，这里不需要返回
+    } catch (error) {
+      // 如果 service 层没有处理错误，使用 streamError 处理
+      ctx.helper.streamError(ctx, error, sessionId)
+    }
+  }
 }
 
 module.exports = TeamPromptController

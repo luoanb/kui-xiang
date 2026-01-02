@@ -4,6 +4,7 @@ import {
   SidebarContent,
   SidebarHeader,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { SquarePen, Plus, Trash2, Star } from "lucide-vue-next";
+import { SquarePen, Plus, Trash2, Star, ChevronLeft } from "lucide-vue-next";
 import { reactive, ref, computed, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import PromptEditor from "@/components/chat/PromptEditor.vue";
@@ -51,12 +52,18 @@ const props = defineProps({
   },
 });
 
+// 使用 Sidebar 的上下文来关闭侧边栏
+const { setOpen } = useSidebar();
+
 const sessionStore = useSessionStore();
 
 // 多提示词列表
 const prompts = ref<TeamPrompt[]>([]);
 const activePromptId = ref<string>("");
 const currentTeamPromptId = ref<string>(""); // 当前使用的团队提示词 ID
+
+// 团队提示词标题（独立于会话标题）
+const teamPromptTitle = ref<string>("");
 
 // 表单数据（用于其他设置）
 const formData = computed(() => sessionStore.settings);
@@ -88,7 +95,8 @@ const initPrompts = async () => {
           presence_penalty: p.presence_penalty || [0],
           frequency_penalty: p.frequency_penalty || [0],
         }));
-        formData.value.title = teamConfig.title;
+        // 设置团队提示词标题（如果没有值，使用会话标题作为默认值）
+        teamPromptTitle.value = teamConfig.title || formData.value.title || "未命名团队提示词";
         if (prompts.value.length > 0) {
           activePromptId.value = prompts.value[0].id;
         }
@@ -100,6 +108,9 @@ const initPrompts = async () => {
 
     // 如果没有团队提示词配置，从会话设置加载
     const settings = await chatApi.getSettings(props.activeSession.id);
+    // 初始化团队提示词标题（如果没有值，使用会话标题作为默认值）
+    teamPromptTitle.value = formData.value.title || "未命名团队提示词";
+    
     // 如果 settings 中有 prompts 字段，使用它；否则从 systemPrompt 创建默认提示词
     if (settings.prompts && Array.isArray(settings.prompts)) {
       // 确保每个提示词都有参数默认值
@@ -332,7 +343,8 @@ const saveAsTeamPrompt = async () => {
     const id = generateTeamPromptId();
     const config: TeamPromptConfig = {
       id,
-      title: formData.value.title || "未命名团队提示词",
+      // 使用团队提示词标题，如果没有值则使用会话标题作为默认值
+      title: teamPromptTitle.value || formData.value.title || "未命名团队提示词",
       prompts: prompts.value,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -380,7 +392,8 @@ const saveTeamPrompt = async () => {
 
       const config: TeamPromptConfig = {
         id: currentTeamPromptId.value,
-        title: formData.value.title || "未命名团队提示词",
+        // 使用团队提示词标题，如果没有值则使用会话标题作为默认值
+        title: teamPromptTitle.value || formData.value.title || "未命名团队提示词",
         prompts: prompts.value,
         createdAt,
         updatedAt: Date.now(),
@@ -418,7 +431,8 @@ const handleSelectTeamPrompt = async (config: TeamPromptConfig) => {
       presence_penalty: p.presence_penalty || [0],
       frequency_penalty: p.frequency_penalty || [0],
     }));
-    formData.value.title = config.title;
+    // 设置团队提示词标题（独立于会话标题）
+    teamPromptTitle.value = config.title || formData.value.title || "未命名团队提示词";
     
     if (prompts.value.length > 0) {
       activePromptId.value = prompts.value[0].id;
@@ -457,7 +471,18 @@ watch(
   <Sidebar side="right" class="absolute h-[calc(100dvh-30px)]">
     <SidebarHeader class="p-4">
       <div class="flex items-center justify-between gap-2">
-        <span>团队提示词</span>
+        <div class="flex items-center gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            class="h-8 w-8"
+            @click="setOpen(false)"
+            type="button"
+          >
+            <ChevronLeft class="h-4 w-4" />
+          </Button>
+          <span>团队提示词</span>
+        </div>
         <div class="flex items-center gap-2">
           <Button
             size="sm"
@@ -491,6 +516,19 @@ watch(
         <div class="grid gap-2">
           <Label>{{ t("chat.settings.chatName") }}</Label>
           <Input type="text" placeholder="shadcn" v-model="formData.title" />
+        </div>
+
+        <!-- 团队提示词标题（独立于会话标题） -->
+        <div class="grid gap-2">
+          <Label>团队提示词名称</Label>
+          <Input 
+            type="text" 
+            :placeholder="formData.title || '未命名团队提示词'" 
+            v-model="teamPromptTitle" 
+          />
+          <p class="text-xs text-muted-foreground">
+            如果没有值，将使用对话标题作为默认值
+          </p>
         </div>
 
         <!-- 多提示词管理 - 左右布局 -->

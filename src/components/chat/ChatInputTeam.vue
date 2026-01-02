@@ -6,13 +6,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PopoverAnchor } from "reka-ui";
-import { CornerDownLeft, Mic, Star, Square } from "lucide-vue-next";
-import UseTool from "@/components/chat/UseTool.vue";
+import { CornerDownLeft, Mic, Star, Square, PocketKnife } from "lucide-vue-next";
 import UseKnowledgeBase from "@/components/chat/UseKnowledgeBase.vue";
 import { useSessionStore } from "@/stores/session";
+import { useMcpStore } from "@/stores/mcp";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { chatApi } from "@/api/request";
 
 const { t } = useI18n();
+const mcpStore = useMcpStore();
 
 interface TeamPrompt {
   id: string;
@@ -441,7 +444,14 @@ const handleRecord = () => {
       <div
         class="ml-auto gap-1.5 absolute bottom-4 right-4 flex items-center space-x-1"
       >
-        <UseTool class="relative"></UseTool>
+        <!-- MCP 开关 -->
+        <div class="flex h-9 items-center gap-1.5 px-2 py-1 rounded-md border bg-background hover:bg-accent">
+          <PocketKnife class="size-3.5" />
+          <Switch
+            v-model="mcpStore.toolsEnabled"
+            class="scale-75"
+          />
+        </div>
         <UseKnowledgeBase class="relative"></UseKnowledgeBase>
         <Button
           @click="handleRecord"

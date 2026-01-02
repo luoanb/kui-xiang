@@ -24,7 +24,7 @@ export const useMcpStore = defineStore('mcp', {
     selectedTools: [],
     error: null,
     initialized: false,
-    toolsEnabled: true,
+    toolsEnabled: true, // 默认开启
     showAddNewDialog: false,
     selectedMcp: null,
     installedServers: [], // 新增：初始化为空数组

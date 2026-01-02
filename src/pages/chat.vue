@@ -181,6 +181,9 @@ const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
       content: "",
       reasoning_content: "",
     })
+    // 记录是否是第一次对话（用于标题更新）
+    const isFirstMessage = chatHistory.value.length === 2 && activeSession.value.title === '👋 Hi'
+    
     // 发送消息并处理流式响应
     await llmApi.sendMessageLlm(
       model,
@@ -202,9 +205,40 @@ const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
       knowledge.value?.join(','),  // 知识库列表 id
       undefined, // promptConfig
       abortController.value.signal, // 传递AbortSignal
-      () => {
+      async () => {
         // 流式响应结束的回调
         isStreaming.value = false
+        
+        // 如果是第一次对话，更新标题
+        if (isFirstMessage) {
+          try {
+            const config = {
+              model: chatStore.model,
+              messages: chatHistory.value,
+              sessionId: activeSession.value,
+            }
+            const summaryRes = await chatApi.summarySession(config)
+            console.log('[chat_vue]', '标题更新结果:', summaryRes)
+            
+            // 同步更新 activeSession、sessionStore.currentSession 和 sessionStore.sessions
+            if (summaryRes && summaryRes.title) {
+              activeSession.value.title = summaryRes.title
+              
+              // 更新 sessionStore 中的会话标题
+              if (sessionStore.currentSession?.id === activeSession.value.id) {
+                sessionStore.currentSession.title = summaryRes.title
+              }
+              
+              // 更新会话列表中的标题
+              const sessionInList = sessionStore.sessions.find(s => s.id === activeSession.value.id)
+              if (sessionInList) {
+                sessionInList.title = summaryRes.title
+              }
+            }
+          } catch (error) {
+            console.error('[chat_vue]', '更新标题失败:', error)
+          }
+        }
       },
     )
   } catch (error: any) {
@@ -243,18 +277,6 @@ const sendMsg = async (msg: string) => {
     sendMsgLlmApi(chatStore.model, msg)
   }
   scrollToBottom(true)
-  
-  // 只有在非助手创建的会话且是第一次对话时才进行总结
-  if (chatHistory.value.length == 2 && activeSession.value.title == '👋 Hi') {
-    const config = {
-      model: chatStore.model,
-      messages: chatHistory.value,
-      sessionId: activeSession.value,
-    }
-    const summaryRes = await chatApi.summarySession(config)
-    console.log('[chat_vue]', summaryRes)
-    activeSession.value.title = summaryRes.title
-  }
 }
 
 const scrollAreaRef = ref(null)
