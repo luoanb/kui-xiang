@@ -77,7 +77,7 @@ const initPrompts = async () => {
     // 先尝试加载团队提示词配置
     const currentId = getCurrentTeamPromptId();
     if (currentId) {
-      const teamConfig = loadTeamPromptConfig(currentId);
+      const teamConfig = await loadTeamPromptConfig(currentId);
       if (teamConfig) {
         currentTeamPromptId.value = currentId;
         // 应用团队提示词配置
@@ -338,9 +338,15 @@ const saveAsTeamPrompt = async () => {
       updatedAt: Date.now(),
     };
 
-    saveTeamPromptConfig(config);
-    currentTeamPromptId.value = id;
-    setCurrentTeamPromptId(id);
+    const result = await saveTeamPromptConfig(config);
+    // 如果保存成功，使用返回的数据库 ID
+    if (result && result.id) {
+      currentTeamPromptId.value = result.id;
+      setCurrentTeamPromptId(result.id);
+    } else {
+      currentTeamPromptId.value = id;
+      setCurrentTeamPromptId(id);
+    }
 
     // 同时保存到当前会话设置
     if (props.activeSession?.id) {
@@ -369,7 +375,7 @@ const saveTeamPrompt = async () => {
     // 如果有 ID，更新现有配置
     try {
       // 从现有配置中获取创建时间
-      const existingConfig = loadTeamPromptConfig(currentTeamPromptId.value);
+      const existingConfig = await loadTeamPromptConfig(currentTeamPromptId.value);
       const createdAt = existingConfig?.createdAt || Date.now();
 
       const config: TeamPromptConfig = {
@@ -380,7 +386,7 @@ const saveTeamPrompt = async () => {
         updatedAt: Date.now(),
       };
 
-      saveTeamPromptConfig(config);
+      await saveTeamPromptConfig(config);
 
       // 同时保存到当前会话设置
       if (props.activeSession?.id) {

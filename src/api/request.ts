@@ -658,3 +658,50 @@ export const ttsApi = {
   }
 }
 
+// 团队提示词相关接口类型定义
+export interface TeamPrompt {
+  id: string
+  title: string
+  content: string
+  isMain: boolean
+  temperature?: number[]
+  top_p?: number[]
+  presence_penalty?: number[]
+  frequency_penalty?: number[]
+}
+
+export interface TeamPromptConfig {
+  id: string
+  title: string
+  prompts: TeamPrompt[]
+  createdAt: number
+  updatedAt: number
+}
+
+export const teamPromptApi = {
+  // 获取所有团队提示词列表
+  async getList(): Promise<TeamPromptConfig[]> {
+    return request.get<TeamPromptConfig[]>('/api/team-prompt/list')
+  },
+
+  // 根据ID获取团队提示词配置
+  async getById(id: string | number): Promise<TeamPromptConfig> {
+    return request.get<TeamPromptConfig>(`/api/team-prompt/${id}`)
+  },
+
+  // 创建团队提示词配置
+  async create(config: Omit<TeamPromptConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<TeamPromptConfig> {
+    return request.post<TeamPromptConfig>('/api/team-prompt', config)
+  },
+
+  // 更新团队提示词配置
+  async update(id: string | number, config: Partial<Omit<TeamPromptConfig, 'id' | 'createdAt' | 'updatedAt'>>): Promise<TeamPromptConfig> {
+    return request.put<TeamPromptConfig>(`/api/team-prompt/${id}`, config)
+  },
+
+  // 删除团队提示词配置
+  async delete(id: string | number): Promise<{ success: boolean }> {
+    return request.delete<{ success: boolean }>(`/api/team-prompt/${id}`)
+  },
+}
+

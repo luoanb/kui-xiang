@@ -17,6 +17,13 @@ module.exports = app => {
   router.get('/api/session/:id/settings', controller.chat.getSettings)
   router.post('/api/session/:id/settings', controller.chat.updateSettings)
 
+  // 团队提示词相关接口
+  router.get('/api/team-prompt/list', controller.teamPrompt.list)
+  router.get('/api/team-prompt/:id', controller.teamPrompt.getById)
+  router.post('/api/team-prompt', controller.teamPrompt.create)
+  router.put('/api/team-prompt/:id', controller.teamPrompt.update)
+  router.delete('/api/team-prompt/:id', controller.teamPrompt.delete)
+
   router.get('/api/ollama/models', controller.ollama.getLocalOllamaModels)
   router.get('/api/ollama/sync', controller.ollama.syncModelFromOllama)
   router.get('/api/ollama/state', controller.ollama.state)

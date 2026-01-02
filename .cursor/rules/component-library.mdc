@@ -27,6 +27,11 @@ alwaysApply: true
 - 使用组件的变体（variants）时，通过 props 传递，如 `variant="outline"`、`size="sm"` 等
 - 复杂组件（如 Dialog、Sidebar）需要组合使用多个子组件，参考组件库文档或现有实现
 
+## 禁止使用的组件
+- **ToastAction 不可用**：在 Toast 中需要按钮时，应使用 `Button` 组件替代，不要使用 `ToastAction`
+  - ❌ `import { ToastAction } from '@/components/ui/toast'`
+  - ✅ `import { Button } from '@/components/ui/button'` 然后在 Toast 中使用 `<Button>`
+
 ## 组件扩展
 - 如需扩展 UI 组件，优先通过组合现有组件实现
 - 如需修改 UI 组件，应在组件目录内修改，保持导出接口不变

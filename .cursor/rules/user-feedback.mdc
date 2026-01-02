@@ -1,0 +1,183 @@
+# 用户反馈提醒架构规范
+
+## 架构概述
+
+项目采用**统一异常处理 + Toast 通知系统**的架构，实现前后端异常流转和用户反馈。
+
+### 异常流转链路
+
+```
+后端异常 → 统一响应格式 → 前端拦截器转换 → 业务代码捕获 → Toast 提示
+```
+
+## 一、后端异常处理机制
+
+### 响应格式
+
+后端统一使用以下响应格式：
+
+```javascript
+// 成功响应
+{
+  code: 0,
+  data: any,
+  message: 'success'
+}
+
+// 错误响应
+{
+  code: -1,  // 非 0 表示错误
+  data: null,
+  message: '错误信息'
+}
+```
+
+### 后端实现
+
+- **位置**：`electron/server/app/extend/helper.js`
+- **成功响应**：`ctx.helper.success(data, message)`
+- **错误响应**：`ctx.helper.error(message, code)`
+- **流式错误**：`ctx.helper.streamError(ctx, error, sessionId)`（用于 SSE 流）
+
+## 二、前端异常处理机制
+
+### 响应拦截器
+
+**位置**：`src/api/request.ts`
+
+前端在响应拦截器中统一处理异常：
+
+```typescript
+// 业务错误（code !== 0）
+if (code !== 0) {
+  return Promise.reject(new Error(message || '请求失败'))
+}
+
+// HTTP 错误
+error => {
+  const message = error.response?.data?.message || error.message
+  return Promise.reject(new Error(message))
+}
+```
+
+### 异常转换规则
+
+- **业务错误**：`{ code: -1, message: 'xxx' }` → `new Error('xxx')`
+- **HTTP 错误**：提取 `error.response?.data?.message` 或 `error.message`
+- **统一输出**：所有异常都转换为 `Error` 对象，通过 `error.message` 获取错误信息
+
+## 三、提醒类型规划
+
+### Toast 类型
+
+项目目前支持两种提醒类型：
+
+1. **成功提示**（`variant: 'default'`）
+   - 用于操作成功、数据保存成功等场景
+   - 默认样式，无需指定 variant
+
+2. **错误提示**（`variant: 'destructive'`）
+   - 用于操作失败、API 错误、验证失败等场景
+   - 自动显示复制按钮，支持一键复制错误信息
+
+### 提醒场景映射
+
+| 场景 | 类型 | variant | 说明 |
+|------|------|---------|------|
+| API 调用成功 | 成功提示 | default | 操作完成提示 |
+| API 调用失败 | 错误提示 | destructive | 显示后端错误信息 |
+| 表单验证失败 | 错误提示 | destructive | 显示验证错误 |
+| 网络错误 | 错误提示 | destructive | 显示网络错误信息 |
+
+## 四、使用推荐
+
+### 1. 标准错误处理模式
+
+**所有 API 调用都应遵循此模式**：
+
+```typescript
+try {
+  await api.someOperation()
+  toast({
+    title: t('common.success'),
+    description: t('common.operationSuccess'),
+  })
+} catch (error: any) {
+  toast({
+    title: t('common.error'),
+    description: error.message || t('common.operationFailed'),
+    variant: 'destructive',
+  })
+}
+```
+
+### 2. 导入方式
+
+```typescript
+// 推荐：直接导入
+import { toast } from '@/components/ui/toast'
+import { Toaster } from '@/components/ui/toast'
+```
+
+### 3. 组件配置
+
+**必须在页面模板中添加 `<Toaster />` 组件**：
+
+```vue
+<template>
+  <div>
+    <!-- 页面内容 -->
+    <Toaster />
+  </div>
+</template>
+```
+
+### 4. 国际化要求
+
+**所有用户可见文本必须使用国际化**：
+
+```typescript
+const { t } = useI18n()
+
+toast({
+  title: t('module.operation.success'),
+  description: t('module.operation.successDesc', { param: value }),
+})
+```
+
+### 5. 错误信息处理
+
+- **优先使用**：`error.message`（来自后端或拦截器转换）
+- **回退方案**：提供默认错误文本，避免显示 undefined
+- **错误类型**：必须使用 `variant: 'destructive'`
+
+## 五、架构原则
+
+### 1. 统一异常处理
+- 后端统一响应格式，前端统一转换规则
+- 业务代码无需关心异常格式，只需捕获 `Error` 对象
+
+### 2. 用户友好
+- 所有错误都通过 Toast 提示用户
+- 错误类型自动提供复制功能，便于用户反馈问题
+
+### 3. 国际化支持
+- 所有提示文本使用 i18n，支持多语言切换
+
+### 4. 类型安全
+- 使用 TypeScript 确保类型安全
+- 错误对象统一为 `Error` 类型
+
+## 六、禁止事项
+
+- ❌ 禁止在业务代码中直接处理响应格式（应由拦截器处理）
+- ❌ 禁止硬编码错误文本（必须使用国际化）
+- ❌ 禁止使用 `alert()`、`confirm()` 等浏览器原生弹窗
+- ❌ 禁止忽略错误（所有错误都应提示用户）
+
+## 相关文件
+
+- 后端响应格式：`electron/server/app/extend/helper.js`
+- 前端拦截器：`src/api/request.ts`
+- Toast 组件：`src/components/ui/toast/`
+- 状态管理：`src/components/ui/toast/use-toast.ts`

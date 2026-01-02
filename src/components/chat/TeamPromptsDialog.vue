@@ -33,8 +33,17 @@ const emit = defineEmits<{
 const teamPromptsList = ref<TeamPromptConfig[]>([]);
 
 // 加载团队提示词列表
-const loadTeamPromptsList = () => {
-  teamPromptsList.value = getTeamPromptsList();
+const loadTeamPromptsList = async () => {
+  try {
+    teamPromptsList.value = await getTeamPromptsList();
+  } catch (error) {
+    console.error('[TeamPromptsDialog] Failed to load team prompts list:', error);
+    toast({
+      variant: "destructive",
+      title: t("common.error"),
+      description: (error as Error).message,
+    });
+  }
 };
 
 // 监听对话框打开状态
@@ -54,11 +63,11 @@ const handleSelect = (config: TeamPromptConfig) => {
 };
 
 // 删除团队提示词
-const handleDelete = (id: string, event: Event) => {
+const handleDelete = async (id: string, event: Event) => {
   event.stopPropagation();
   try {
-    deleteTeamPromptConfig(id);
-    loadTeamPromptsList();
+    await deleteTeamPromptConfig(id);
+    await loadTeamPromptsList();
     toast({
       title: t("common.success"),
       description: "删除成功",

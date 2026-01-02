@@ -2,8 +2,19 @@
 import { isVNode } from 'vue'
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from '.'
 import { useToast } from './use-toast'
+import { Button } from '@/components/ui/button'
 
 const { toasts } = useToast()
+
+const copyError = async (toast: any) => {
+  let text = ''
+  if (toast.title) text += toast.title
+  if (toast.description) {
+    if (text) text += '\n\n'
+    text += typeof toast.description === 'string' ? toast.description : '错误详情请查看控制台'
+  }
+  await navigator.clipboard.writeText(text)
+}
 </script>
 
 <template>
@@ -23,7 +34,15 @@ const { toasts } = useToast()
         </template>
         <ToastClose />
       </div>
-      <component :is="toast.action" />
+      <Button
+        v-if="toast.variant === 'destructive'"
+        @click="copyError(toast)"
+        size="sm"
+        variant="outline"
+      >
+        复制
+      </Button>
+      <component v-if="toast.action" :is="toast.action" />
     </Toast>
     <ToastViewport />
   </ToastProvider>
