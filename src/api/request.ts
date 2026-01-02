@@ -230,6 +230,7 @@ export const chatApi = {
       top_p: number
       presence_penalty: number
       frequency_penalty: number
+      prompts?: TeamPrompt[]
     }>(`/api/session/${sessionId}/settings`)
   },
 
@@ -710,10 +711,10 @@ export interface TeamPrompt {
   title: string
   content: string
   isMain: boolean
-  temperature?: number[]
-  top_p?: number[]
-  presence_penalty?: number[]
-  frequency_penalty?: number[]
+  temperature: number[]
+  top_p: number[]
+  presence_penalty: number[]
+  frequency_penalty: number[]
 }
 
 export interface TeamPromptConfig {

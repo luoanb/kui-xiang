@@ -56,7 +56,7 @@ interface Message {
 }
 const { t } = useI18n()
 const chatStore = useChatStore()
-const activeSession = ref({ title: "", id: "" })
+const activeSession = ref({ title: "", id: 0 })
 const chatHistory = ref<Message[]>([])
 const loading = ref(false)
 const isStreaming = ref(false) // 跟踪对话是否正在进行中（流式响应）
@@ -140,6 +140,7 @@ const sendMsgLocalOllama = async (model: LLMModel, msg: string) => {
       },
       tools.value, // 工具列表
       knowledge.value?.join(','),  // 知识库列表 id
+      undefined, // promptConfig
       abortController.value.signal, // 传递AbortSignal
       () => {
         // 流式响应结束的回调

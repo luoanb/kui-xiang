@@ -108,13 +108,38 @@ class ChatService extends Service {
         const tool_calls = toolCallMerger.handleChunk(chunk)
         if (tool_calls) {
           console.log('[chat_js]', '✅ tool_calls 完整结果：', tool_calls)
-          // 可以 return / 推送前端 / 执行函数调用
+          
+          // MCP调用前：先保存已有的上文内容
+          let currentMsgSaved = msgSaved
+          if (assistantMessage) {
+            if (currentMsgSaved) {
+              // 如果已有保存的消息，追加已有的内容
+              await this.appendMsg(sessionId, 'assistant', assistantMessage)
+              await currentMsgSaved.reload()
+            } else {
+              // 如果没有保存的消息，创建新消息保存已有的内容
+              currentMsgSaved = await this.saveMsg(
+                'default-user',
+                'assistant',
+                assistantMessage,
+                sessionId,
+              )
+            }
+            // 清空累积的内容，因为已经保存
+            assistantMessage = ''
+          }
+          
+          // 执行函数调用
           const toolCallRes = await this.handleRunToolCall(tool_calls)
-          const toolSaveRes = await this.sendAndSaveToolCall(
+          const toolSaveResult = await this.sendAndSaveToolCall(
             toolCallRes,
             sessionId,
-            msgSaved,
+            currentMsgSaved,
           )
+          
+          // MCP调用后：更新 msgSaved 为包含工具调用结果的消息，确保后续回复追加到同一消息
+          const updatedMsgSaved = toolSaveResult.savedMsg || currentMsgSaved
+          const toolCallContent = toolSaveResult.content.join('\n')
           
           // 使用更新后的消息重新发起对话
           ctx.logger.info('工具调用完成，重新发起对话')
@@ -123,7 +148,7 @@ class ChatService extends Service {
           const updatedMessages = [...messages]
           updatedMessages.push({
             role: 'assistant',
-            content: toolSaveRes.join('\n'),
+            content: toolCallContent,
           })
           
           // 重新获取 stream 并继续处理，不要结束当前响应
@@ -153,7 +178,7 @@ class ChatService extends Service {
             sessionId,
             model,
             newLoopArgs,
-            msgSaved,
+            updatedMsgSaved, // 使用更新后的 msgSaved，确保后续回复追加到包含MCP工具调用的消息
           )
           return
         }
@@ -190,13 +215,37 @@ class ChatService extends Service {
         if (incompleteToolCalls) {
           console.log('[chat_js]', '✅ 成功修复未完成的tool_call，继续执行')
           try {
+            // MCP调用前：先保存已有的上文内容
+            let currentMsgSaved = msgSaved
+            if (assistantMessage) {
+              if (currentMsgSaved) {
+                // 如果已有保存的消息，追加已有的内容
+                await this.appendMsg(sessionId, 'assistant', assistantMessage)
+                await currentMsgSaved.reload()
+              } else {
+                // 如果没有保存的消息，创建新消息保存已有的内容
+                currentMsgSaved = await this.saveMsg(
+                  'default-user',
+                  'assistant',
+                  assistantMessage,
+                  sessionId,
+                )
+              }
+              // 清空累积的内容，因为已经保存
+              assistantMessage = ''
+            }
+            
             // 执行修复后的tool_call
             const toolCallRes = await this.handleRunToolCall(incompleteToolCalls)
-            const toolSaveRes = await this.sendAndSaveToolCall(
+            const toolSaveResult = await this.sendAndSaveToolCall(
               toolCallRes,
               sessionId,
-              msgSaved,
+              currentMsgSaved,
             )
+            
+            // MCP调用后：更新 msgSaved 为包含工具调用结果的消息，确保后续回复追加到同一消息
+            const updatedMsgSaved = toolSaveResult.savedMsg || currentMsgSaved
+            const toolCallContent = toolSaveResult.content.join('\n')
             
             // 使用更新后的消息重新发起对话，继续在当前响应中处理
             ctx.logger.info('工具调用完成，重新发起对话')
@@ -204,7 +253,7 @@ class ChatService extends Service {
             const updatedMessages = [...messages]
             updatedMessages.push({
               role: 'assistant',
-              content: toolSaveRes.join('\n'),
+              content: toolCallContent,
             })
             
             // 重新获取 stream 并继续处理，不要结束当前响应
@@ -234,7 +283,7 @@ class ChatService extends Service {
               sessionId,
               model,
               newLoopArgs,
-              msgSaved,
+              updatedMsgSaved, // 使用更新后的 msgSaved，确保后续回复追加到包含MCP工具调用的消息
             )
             return
           } catch (error) {
@@ -274,16 +323,20 @@ class ChatService extends Service {
         }
       }
 
-      // 保存助手的完整回复
-      if (msgSaved && assistantMessage) {
-        await this.appendMsg(msgSaved.id, assistantMessage)
-      } else if (assistantMessage) {
-        await this.saveMsg(
-          'default-user',
-          'assistant',
-          assistantMessage,
-          sessionId,
-        )
+      // 保存助手的完整回复（流式响应结束后的最后一段内容）
+      if (assistantMessage) {
+        if (msgSaved) {
+          // 如果已有保存的消息（可能包含MCP调用结果），追加到最后
+          await this.appendMsg(sessionId, 'assistant', assistantMessage)
+        } else {
+          // 如果没有保存的消息，创建新消息
+          await this.saveMsg(
+            'default-user',
+            'assistant',
+            assistantMessage,
+            sessionId,
+          )
+        }
       }
 
       // 只有在响应尚未结束时才结束它
@@ -355,6 +408,8 @@ class ChatService extends Service {
   async sendAndSaveToolCall(res, sessionId, msgSaved) {
     const { ctx } = this
     const saveRes = []
+    let toolCallContent = ''
+    
     for (const message of res) {
       const messageWithDirective = this.ctx.helper.toolCallFucntionToDirective(
         message,
@@ -363,10 +418,32 @@ class ChatService extends Service {
       // 返回客户端指令流
       ctx.res.write(`${JSON.stringify(messageWithDirective)}\n\n`)
       const content = messageWithDirective.choices[0].delta.content
-      // this.appendMsg(sessionId, 'assistant', content)
+      toolCallContent += content
       saveRes.push(content)
     }
-    return saveRes
+    
+    // 保存MCP工具调用的结果到数据库，避免历史记录被分割
+    if (toolCallContent) {
+      if (msgSaved) {
+        // 如果已有保存的消息，追加到该消息
+        // appendMsg 会查找当前会话角色的最新消息并追加内容
+        await this.appendMsg(sessionId, 'assistant', toolCallContent)
+        // 重新加载消息以获取最新内容
+        await msgSaved.reload()
+      } else {
+        // 如果没有保存的消息，创建新消息
+        const savedMsg = await this.saveMsg(
+          'default-user',
+          'assistant',
+          toolCallContent,
+          sessionId,
+        )
+        // 返回保存的消息对象，以便后续追加内容
+        return { content: saveRes, savedMsg }
+      }
+    }
+    
+    return { content: saveRes, savedMsg: msgSaved }
   }
 
   async handleStreamError(error, ctx) {

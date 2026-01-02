@@ -66,12 +66,8 @@ const loadPromptsForMenu = async () => {
     // 如果 sessionStore 中没有数据，或者 prompts 不存在，则从 API 获取
     if (!settings || !settings.prompts || !Array.isArray(settings.prompts)) {
       console.log("[ChatInputTeam] sessionStore 中没有提示词数据，从 API 获取");
-      settings = await chatApi.getSettings(props.activeSession.id);
-      // 更新 sessionStore
-      if (settings) {
-        await sessionStore.fetchSettings(props.activeSession.id);
-        settings = sessionStore.settings;
-      }
+      await sessionStore.fetchSettings(props.activeSession.id);
+      settings = sessionStore.settings;
     } else {
       console.log("[ChatInputTeam] 从 sessionStore 获取提示词数据");
     }
@@ -118,12 +114,8 @@ const loadPrompts = async () => {
     // 如果 sessionStore 中没有数据，或者 prompts 不存在，则从 API 获取
     if (!settings || !settings.prompts || !Array.isArray(settings.prompts)) {
       console.log("[ChatInputTeam] sessionStore 中没有提示词数据，从 API 获取");
-      settings = await chatApi.getSettings(props.activeSession.id);
-      // 更新 sessionStore
-      if (settings) {
-        await sessionStore.fetchSettings(props.activeSession.id);
-        settings = sessionStore.settings;
-      }
+      await sessionStore.fetchSettings(props.activeSession.id);
+      settings = sessionStore.settings;
     } else {
       console.log("[ChatInputTeam] 从 sessionStore 获取提示词数据");
     }

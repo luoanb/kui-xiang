@@ -16,6 +16,18 @@ interface SessionSettings {
   top_p: number[]
   presence_penalty: number[]
   frequency_penalty: number[]
+  prompts?: TeamPrompt[]
+}
+
+interface TeamPrompt {
+  id: string
+  title: string
+  content: string
+  isMain: boolean
+  temperature?: number[]
+  top_p?: number[]
+  presence_penalty?: number[]
+  frequency_penalty?: number[]
 }
 
 export const useSessionStore = defineStore('session', {
@@ -132,6 +144,7 @@ export const useSessionStore = defineStore('session', {
           top_p: [settings.top_p ?? 1],
           presence_penalty: [settings.presence_penalty ?? 0],
           frequency_penalty: [settings.frequency_penalty ?? 0],
+          prompts: settings.prompts,
         }
         return settings
       } catch (error) {

@@ -73,7 +73,17 @@ const isTeamPromptsDialogOpen = ref(false);
 
 // 当前活动的提示词
 const currentPrompt = computed(() => {
-  return prompts.value.find((p) => p.id === activePromptId.value);
+  const prompt = prompts.value.find((p) => p.id === activePromptId.value);
+  return {
+    id: prompt?.id || '',
+    title: prompt?.title || '',
+    content: prompt?.content || '',
+    isMain: prompt?.isMain || false,
+    temperature: prompt?.temperature || [0.6],
+    top_p: prompt?.top_p || [1],
+    presence_penalty: prompt?.presence_penalty || [0],
+    frequency_penalty: prompt?.frequency_penalty || [0],
+  };
 });
 
 // 初始化提示词列表
@@ -115,7 +125,10 @@ const initPrompts = async () => {
     if (settings.prompts && Array.isArray(settings.prompts)) {
       // 确保每个提示词都有参数默认值
       prompts.value = settings.prompts.map(p => ({
-        ...p,
+        id: p.id || `prompt-${Date.now()}`,
+        title: p.title || "未命名提示词",
+        content: p.content || "",
+        isMain: p.isMain || false,
         temperature: p.temperature || [0.6],
         top_p: p.top_p || [1],
         presence_penalty: p.presence_penalty || [0],
@@ -154,7 +167,13 @@ const savePrompts = async () => {
     console.log("[SidebarRightTeam] 保存提示词到会话设置，数量:", prompts.value.length, "提示词:", prompts.value.map(p => ({ id: p.id, title: p.title })));
     await sessionStore.updateSettings(props.activeSession.id, {
       ...formData.value,
-      prompts: prompts.value,
+      prompts: prompts.value.map(p => ({
+          ...p,
+          temperature: p.temperature || [0.6],
+          top_p: p.top_p || [1],
+          presence_penalty: p.presence_penalty || [0],
+          frequency_penalty: p.frequency_penalty || [0],
+        })) as unknown as import('@/api/request').TeamPrompt[],
       // 为了兼容，也保存主提示词到 systemPrompt
       systemPrompt: prompts.value.find((p) => p.isMain)?.content || "",
     });
@@ -345,7 +364,13 @@ const saveAsTeamPrompt = async () => {
       id,
       // 使用团队提示词标题，如果没有值则使用会话标题作为默认值
       title: teamPromptTitle.value || formData.value.title || "未命名团队提示词",
-      prompts: prompts.value,
+      prompts: prompts.value.map(p => ({
+        ...p,
+        temperature: p.temperature || [0.6],
+        top_p: p.top_p || [1],
+        presence_penalty: p.presence_penalty || [0],
+        frequency_penalty: p.frequency_penalty || [0],
+      })) as unknown as import('@/api/request').TeamPrompt[],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -394,7 +419,13 @@ const saveTeamPrompt = async () => {
         id: currentTeamPromptId.value,
         // 使用团队提示词标题，如果没有值则使用会话标题作为默认值
         title: teamPromptTitle.value || formData.value.title || "未命名团队提示词",
-        prompts: prompts.value,
+        prompts: prompts.value.map(p => ({
+          ...p,
+          temperature: p.temperature || [0.6],
+          top_p: p.top_p || [1],
+          presence_penalty: p.presence_penalty || [0],
+          frequency_penalty: p.frequency_penalty || [0],
+        })) as unknown as import('@/api/request').TeamPrompt[],
         createdAt,
         updatedAt: Date.now(),
       };

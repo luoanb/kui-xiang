@@ -52,6 +52,9 @@
     ],
     "artifactName": "${productName}-windows-${arch}-${version}-Setup.${ext}",
     "asarUnpack": [],
+    "sign": false,
+    "signingHashAlgorithms": [],
+    "forceCodeSigning": false,
     // "extraResources": [{
     //   "from": "dist-electron/server",
     //   "to": "server"
