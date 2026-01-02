@@ -12,5 +12,18 @@
   "i18n-ally.keystyle": "nested",
   "i18n-ally.sourceLanguage": "en",
   "i18n-ally.displayLanguage": "zh",
-  "i18n-ally.enabledFrameworks": ["vue-i18n"]
+  "i18n-ally.enabledFrameworks": ["vue"],
+  "editor.formatOnSave": false,
+  "[vue]": {
+    "editor.formatOnSave": false
+  },
+  "[typescript]": {
+    "editor.formatOnSave": false
+  },
+  "[javascript]": {
+    "editor.formatOnSave": false
+  },
+  "[json]": {
+    "editor.formatOnSave": false
+  }
 }

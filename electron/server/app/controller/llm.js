@@ -169,19 +169,21 @@ class LLMController extends Controller {
   // 对话
   async chat() {
     const { ctx } = this
-    const { model, provider, messages, sessionId, config, tools, context } = ctx.request.body
+    const { model, provider, messages, sessionId, config, tools, context, promptConfig } = ctx.request.body
     const uid = ctx.request.query.uid || 'default-user'
     let ragBaseIds = []
     if(context && typeof context === 'string') {
       ragBaseIds = context.split(',')
     }
     try {
+      // 如果提供了 promptConfig，将其合并到 config 中
+      const mergedConfig = promptConfig ? { ...config, promptConfig } : config
       const res = await ctx.service.llm.chat(
         model,
         provider,
         messages,
         sessionId,
-        config,
+        mergedConfig,
         tools,
         null,
         ragBaseIds

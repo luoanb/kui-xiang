@@ -7,11 +7,13 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { ref, defineProps, defineEmits, watch } from 'vue'
+import MonacoEditor from '@/components/common/MonacoEditor.vue'
+import { ref, defineProps, defineEmits, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useColorMode } from '@vueuse/core'
 
 const { t } = useI18n()
+const colorMode = useColorMode()
 
 const props = defineProps({
   isOpen: {
@@ -27,6 +29,15 @@ const props = defineProps({
 const emit = defineEmits(['update:isOpen', 'save'])
 
 const promptText = ref(props.initialPrompt)
+
+// 根据当前主题设置 Monaco 编辑器主题
+const monacoTheme = computed(() => {
+  const mode = colorMode.value
+  if (mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    return 'vs-dark'
+  }
+  return 'vs'
+})
 
 // 监听 initialPrompt 的变化
 watch(
@@ -49,15 +60,24 @@ const handleCancel = () => {
 
 <template>
   <Dialog :open="isOpen" @update:open="val => emit('update:isOpen', val)">
-    <DialogContent class="sm:max-w-[800px]">
+    <DialogContent class="sm:max-w-[900px] max-h-[90vh] flex flex-col">
       <DialogHeader>
         <DialogTitle>{{ t('chat.promptEditor.title') }}</DialogTitle>
       </DialogHeader>
-      <div class="py-4">
-        <Textarea
+      <div class="py-4 flex-1 min-h-0">
+        <MonacoEditor
           v-model="promptText"
-          :placeholder="t('chat.promptEditor.placeholder')"
-          class="min-h-[500px]"
+          language="markdown"
+          :theme="monacoTheme"
+          height="500px"
+          :options="{
+            minimap: { enabled: false },
+            wordWrap: 'on',
+            lineNumbers: 'on',
+            fontSize: 14,
+            tabSize: 2,
+            automaticLayout: true,
+          }"
         />
       </div>
       <DialogFooter>

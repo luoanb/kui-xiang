@@ -52,6 +52,14 @@ export default {
         items: [
           { text: '硅基流动', link: '/model/use-in-siliconflow' },
         ]
+      },
+      {
+        text: '技术文档',
+        items: [
+          { text: '角色设定调用流程', link: '/role-setting-flow' },
+          { text: '项目启动流程', link: '/startup-flow' },
+          { text: '代码启动流程', link: '/startup-code-flow' },
+        ]
       }
     ]
   }

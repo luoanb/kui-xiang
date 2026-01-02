@@ -16,7 +16,7 @@ class ChatService extends Service {
    * @param {string} sessionId - 会话ID
    * @reurns {Promise<string>} - 返回聊天结果
    */
-  async sendMessageLocal(model, messages, sessionId) {
+  async sendMessageLocal(model, messages, sessionId, promptConfig) {
     this.cachedParams = { model, messages, sessionId }
     const { ctx } = this
     try {
@@ -29,6 +29,22 @@ class ChatService extends Service {
         model: model.id,
         messages,
         stream: true,
+      }
+
+      // 如果提供了 promptConfig，添加到请求参数中
+      if (promptConfig) {
+        if (promptConfig.temperature !== undefined) {
+          requestParams.temperature = promptConfig.temperature
+        }
+        if (promptConfig.top_p !== undefined) {
+          requestParams.top_p = promptConfig.top_p
+        }
+        if (promptConfig.presence_penalty !== undefined) {
+          requestParams.presence_penalty = promptConfig.presence_penalty
+        }
+        if (promptConfig.frequency_penalty !== undefined) {
+          requestParams.frequency_penalty = promptConfig.frequency_penalty
+        }
       }
       const stream = await openai.chat.completions.create(requestParams)
       await this.handleStream(
@@ -554,6 +570,32 @@ class ChatService extends Service {
         frequency_penalty: settings.frequency_penalty?.[0],
       }
 
+      // 如果存在 prompts 字段，将其存储为 JSON 字符串到 system_prompt 字段
+      // 为了兼容性，同时保存主提示词到 system_prompt
+      if (settings.prompts && Array.isArray(settings.prompts)) {
+        // 将 prompts 数组存储为 JSON 字符串
+        // 由于数据库字段是 TEXT，我们可以将 JSON 存储在 system_prompt 中
+        // 或者使用一个约定：如果 system_prompt 以 "{" 开头，则认为是 JSON
+        const mainPrompt = settings.prompts.find(p => p.isMain)
+        if (mainPrompt) {
+          updateData.system_prompt = mainPrompt.content
+        }
+        // 将 prompts 数组序列化为 JSON 字符串，存储在 system_prompt 字段
+        // 为了兼容，我们使用一个特殊格式：JSON 字符串存储在 system_prompt 中
+        // 格式：{"prompts": [...], "mainPrompt": "..."}
+        const promptsData = JSON.stringify({
+          prompts: settings.prompts,
+          mainPrompt: mainPrompt?.content || ''
+        })
+        // 如果 system_prompt 字段足够大，我们可以直接存储 JSON
+        // 否则，我们需要使用另一个字段或者扩展字段
+        // 这里我们使用一个约定：如果 prompts 存在，将其存储在 system_prompt 中作为 JSON
+        // 但为了兼容，我们只在有多个提示词时才这样做
+        if (settings.prompts.length > 1) {
+          updateData.system_prompt = promptsData
+        }
+      }
+
       await session.update(updateData)
       return session
     } catch (error) {
@@ -570,14 +612,39 @@ class ChatService extends Service {
         throw new Error(ctx.__('chat.session_not_found'))
       }
 
-      return {
+      // 尝试解析 system_prompt 是否为 JSON（多提示词格式）
+      let prompts = null
+      let systemPrompt = session.system_prompt
+      
+      try {
+        // 如果 system_prompt 以 "{" 开头，尝试解析为 JSON
+        if (session.system_prompt && session.system_prompt.trim().startsWith('{')) {
+          const parsed = JSON.parse(session.system_prompt)
+          if (parsed.prompts && Array.isArray(parsed.prompts)) {
+            prompts = parsed.prompts
+            systemPrompt = parsed.mainPrompt || parsed.prompts.find(p => p.isMain)?.content || ''
+          }
+        }
+      } catch (e) {
+        // 解析失败，说明是普通字符串，使用原值
+        systemPrompt = session.system_prompt
+      }
+
+      const result = {
         title: session.title,
-        systemPrompt: session.system_prompt,
+        systemPrompt: systemPrompt,
         temperature: session.temperature,
         top_p: session.top_p,
         presence_penalty: session.presence_penalty,
         frequency_penalty: session.frequency_penalty,
       }
+
+      // 如果解析出了 prompts，添加到返回结果中
+      if (prompts) {
+        result.prompts = prompts
+      }
+
+      return result
     } catch (error) {
       ctx.logger.error('获取会话设置失败:', error)
       throw new Error(ctx.__('chat.get_settings_failed') + error.message)

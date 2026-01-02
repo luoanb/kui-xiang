@@ -17,6 +17,9 @@ export default defineConfig(({ command }) => {
   const isBuild = command === 'build'
   const sourcemap = isServe || !!process.env.VSCODE_DEBUG
 
+  // 禁用自动打开浏览器（适用于所有情况）
+  process.env.BROWSER = 'none'
+
   return {
     css: {
       postcss: {
@@ -161,16 +164,20 @@ export default defineConfig(({ command }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
-    server:
-      process.env.VSCODE_DEBUG &&
-      (() => {
+    server: (() => {
+      const baseConfig = {
+        open: false, // 禁止自动打开浏览器，防止热更新时重复打开标签页
+      }
+      if (process.env.VSCODE_DEBUG) {
         const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
         return {
+          ...baseConfig,
           host: url.hostname,
           port: +url.port,
-          open: false,
         }
-      })(),
+      }
+      return baseConfig
+    })(),
     clearScreen: false,
   }
 })

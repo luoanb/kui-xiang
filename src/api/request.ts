@@ -159,6 +159,12 @@ export const chatApi = {
     onProgressReasoning?: (reasoning_content: string) => void,
     tools?: any[], // 工具列表
     context?: string,  // 知识库
+    promptConfig?: { // 提示词配置（用于 team 功能）
+      temperature?: number;
+      top_p?: number;
+      presence_penalty?: number;
+      frequency_penalty?: number;
+    },
   ) {
 
     const requestBody: any = { model, messages, sessionId }
@@ -175,6 +181,11 @@ export const chatApi = {
       requestBody.context = context
     } else {
       console.log('[request_ts]', '没有context，不添加到请求体中')
+    }
+
+    // 如果提供了 promptConfig，添加到请求体中
+    if (promptConfig) {
+      requestBody.promptConfig = promptConfig
     }
 
     try {
@@ -384,6 +395,12 @@ export const llmApi = {
     onProgressReasoning?: (reasoning_content: string) => void,
     tools?: any[], // 工具列表
     context?: string,  // 知识库
+    promptConfig?: { // 提示词配置（用于 team 功能）
+      temperature?: number;
+      top_p?: number;
+      presence_penalty?: number;
+      frequency_penalty?: number;
+    },
   ) {
     const provider = model.provider_id
 
@@ -401,6 +418,11 @@ export const llmApi = {
       requestBody.context = context
     } else {
       console.log('[request_ts]', '没有context，不添加到请求体中')
+    }
+
+    // 如果提供了 promptConfig，添加到请求体中
+    if (promptConfig) {
+      requestBody.promptConfig = promptConfig
     }
 
     try {

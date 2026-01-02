@@ -3,13 +3,14 @@ const { Controller } = require('egg')
 class ChatController extends Controller {
   async sendMessageLocal() {
     const { ctx } = this
-    const { model, messages, sessionId } = ctx.request.body
+    const { model, messages, sessionId, promptConfig } = ctx.request.body
     try {
       // const { model, provider, messages, config } = loopArgs
       const result = await ctx.service.chat.sendMessageLocal(
         model,
         messages,
         sessionId,
+        promptConfig,
       )
       ctx.body = ctx.helper.success(result)
     } catch (error) {
