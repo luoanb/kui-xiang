@@ -59,10 +59,12 @@ const chatStore = useChatStore();
 const activeSession = ref({ title: "", id: "" });
 const chatHistory = ref<Message[]>([]);
 const loading = ref(false);
+const isStreaming = ref(false); // 跟踪对话是否正在进行中（流式响应）
 const currentAssistantMessage = ref("");
 const sidebarLeftOpen = ref(true);
 const sidebarRightOpen = ref(false);
 const selectedPrompt = ref<any>(null); // 当前选中的提示词
+const abortController = ref<AbortController | null>(null);
 
 watch(
   () => sessionStore.currentSession,
@@ -103,8 +105,12 @@ const handleSessionChange = async (session) => {
 };
 
 const sendMsgLocalOllama = async (model: LLMModel, msg: string) => {
-  if (loading.value) return;
+  if (loading.value || isStreaming.value) return;
   loading.value = true;
+  isStreaming.value = true; // 开始流式响应
+  
+  // 创建新的AbortController
+  abortController.value = new AbortController();
 
   try {
     chatHistory.value.push({ role: "user", content: msg });
@@ -144,19 +150,35 @@ const sendMsgLocalOllama = async (model: LLMModel, msg: string) => {
       },
       tools.value,
       knowledge.value?.join(","),
-      promptConfig
+      promptConfig,
+      abortController.value.signal, // 传递AbortSignal
+      () => {
+        // 流式响应结束的回调
+        isStreaming.value = false;
+      },
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("[team_vue] Error during chat:", error);
-    chatHistory.value.pop();
+    // 如果是用户主动取消，不显示错误
+    if (error.name === 'AbortError') {
+      console.log('[team_vue]', '用户取消了对话');
+    } else {
+      chatHistory.value.pop();
+    }
   } finally {
     loading.value = false;
+    isStreaming.value = false; // 确保在错误时也重置
+    abortController.value = null;
   }
 };
 
 const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
-  if (loading.value) return;
+  if (loading.value || isStreaming.value) return;
   loading.value = true;
+  isStreaming.value = true; // 开始流式响应
+  
+  // 创建新的AbortController
+  abortController.value = new AbortController();
 
   try {
     chatHistory.value.push({ role: "user", content: msg });
@@ -200,13 +222,35 @@ const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
       },
       tools.value,
       knowledge.value?.join(","),
-      promptConfig
+      promptConfig,
+      abortController.value.signal, // 传递AbortSignal
+      () => {
+        // 流式响应结束的回调
+        isStreaming.value = false;
+      },
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("[team_vue] Error during chat:", error);
-    chatHistory.value.pop();
+    // 如果是用户主动取消，不显示错误
+    if (error.name === 'AbortError') {
+      console.log('[team_vue]', '用户取消了对话');
+    } else {
+      chatHistory.value.pop();
+    }
   } finally {
     loading.value = false;
+    isStreaming.value = false; // 确保在错误时也重置
+    abortController.value = null;
+  }
+};
+
+// 停止当前对话
+const handleStop = () => {
+  console.log('[team_vue]', '用户请求停止对话');
+  if (abortController.value) {
+    abortController.value.abort();
+    loading.value = false;
+    abortController.value = null;
   }
 };
 
@@ -416,10 +460,11 @@ onMounted(() => {
         class="sticky bottom-0 h-[120px] max-h-[120px] content-center shrink-0 items-center gap-2 border-b bg-background"
       >
         <ChatInputTeam
-          :loading="loading"
+          :loading="isStreaming"
           :disabled="loading"
           :activeSession="activeSession"
           @sendMsg="sendMsg"
+          @stop="handleStop"
           @promptSelected="(prompt) => { selectedPrompt = prompt; }"
           :placeholder="t('chat.inputPlaceholder')"
         />

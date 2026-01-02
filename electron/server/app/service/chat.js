@@ -3,12 +3,16 @@ const { Service } = require('egg')
 const OpenAI = require('openai')
 const ollamaBaseUrl = 'http://127.0.0.1:11434'
 const ToolCallMerger = require('./ToolCallMerger')
+const MCP_STATE = require('./ToolCallMerger').MCP_STATE
 
 class ChatService extends Service {
-  accumulatedContent = ''
-  currentToolCall = {}
-  toolCallArguments = ''
-  cachedParams = null
+  constructor(ctx) {
+    super(ctx)
+    this.accumulatedContent = ''
+    this.currentToolCall = {}
+    this.toolCallArguments = ''
+    this.cachedParams = null
+  }
 
   /**
    * 发送消息到大模型
@@ -111,6 +115,13 @@ class ChatService extends Service {
             sessionId,
             msgSaved,
           )
+          
+          // 确保当前响应已正确结束
+          if (!ctx.res.writableEnded) {
+            ctx.res.end()
+            hasEnded = true
+          }
+          
           // 使用更新后的消息重新发起对话
           ctx.logger.info('工具调用完成，重新发起对话')
           const { model, provider, messages, config } = loopArgs
@@ -153,10 +164,88 @@ class ChatService extends Service {
         // todo: session 会话信息
       }
 
+      // 检测状态1：参数构建中 - 检查是否有未完成的tool_call
+      if (toolCallMerger.hasIncompleteToolCalls()) {
+        console.log('[chat_js]', '⚠️ 检测到未完成的tool_call（状态1：参数构建中）')
+        
+        // 尝试修复并获取tool_calls
+        const incompleteToolCalls = toolCallMerger.tryGetMergedToolCalls()
+        
+        if (incompleteToolCalls) {
+          console.log('[chat_js]', '✅ 成功修复未完成的tool_call，继续执行')
+          try {
+            // 执行修复后的tool_call
+            const toolCallRes = await this.handleRunToolCall(incompleteToolCalls)
+            const toolSaveRes = await this.sendAndSaveToolCall(
+              toolCallRes,
+              sessionId,
+              msgSaved,
+            )
+            
+            // 确保当前响应已正确结束
+            if (!ctx.res.writableEnded) {
+              ctx.res.end()
+              hasEnded = true
+            }
+            
+            // 使用更新后的消息重新发起对话（在新的请求中）
+            ctx.logger.info('工具调用完成，将在下次对话时继续处理')
+            // 注意：不在当前响应中继续，而是保存状态，让下次对话时自动恢复
+            // 这样可以避免响应混乱和loading状态丢失
+            const { model, provider, messages, config } = loopArgs
+            messages.push({
+              role: 'assistant',
+              content: toolSaveRes.join('\n'),
+            })
+            // 保存消息以便下次对话时自动恢复
+            await this.saveMsg(
+              'default-user',
+              'assistant',
+              toolSaveRes.join('\n'),
+              sessionId,
+            )
+            return
+          } catch (error) {
+            ctx.logger.error('[chat_js] 执行修复后的tool_call失败:', error)
+            // 如果执行失败，保存未完成状态
+            await this.saveIncompleteMcpState(
+              sessionId,
+              MCP_STATE.BUILDING_PARAMS,
+              toolCallMerger.getIncompleteToolCalls(),
+              msgSaved,
+            )
+          }
+        } else {
+          // 无法修复，保存未完成状态
+          console.log('[chat_js]', '❌ 无法修复未完成的tool_call，保存状态')
+          const incompleteInfo = toolCallMerger.getIncompleteToolCalls()
+          await this.saveIncompleteMcpState(
+            sessionId,
+            MCP_STATE.BUILDING_PARAMS,
+            incompleteInfo,
+            msgSaved,
+          )
+          
+          // 发送提示信息给前端
+          if (!ctx.res.writableEnded) {
+            const errorChunk = {
+              choices: [{
+                delta: {
+                  content: '\n\n⚠️ MCP工具调用因内容过长而中断。参数构建未完成，请回复"继续"以完成工具调用。',
+                },
+                finish_reason: 'stop',
+                index: 0,
+              }],
+            }
+            ctx.res.write(JSON.stringify(errorChunk) + '\n')
+          }
+        }
+      }
+
       // 保存助手的完整回复
-      if (msgSaved) {
+      if (msgSaved && assistantMessage) {
         await this.appendMsg(msgSaved.id, assistantMessage)
-      } else {
+      } else if (assistantMessage) {
         await this.saveMsg(
           'default-user',
           'assistant',
@@ -189,15 +278,44 @@ class ChatService extends Service {
       const toolName = toolCall.function.name
       const toolArgs = toolCall.function.arguments
       console.log('[chat_js]', 'run tool:', toolName, toolArgs)
-      const resItem = await ctx.service.tools.runTools(toolName, toolArgs)
-      const messageStandWithRes = this.ctx.helper.factoryMessageContent({
-        type: 'mcp',
-        id: toolCall.id,
-        name: toolCall.function.name,
-        arguments: toolCall.function.arguments,
-        result: resItem,
-      })
-      res.push(messageStandWithRes)
+      
+      try {
+        // 设置超时（30秒）
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('MCP工具调用超时（30秒）')), 30000)
+        })
+        
+        const toolCallPromise = ctx.service.tools.runTools(toolName, toolArgs)
+        const resItem = await Promise.race([toolCallPromise, timeoutPromise])
+        
+        const messageStandWithRes = this.ctx.helper.factoryMessageContent({
+          type: 'mcp',
+          id: toolCall.id,
+          name: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+          result: resItem,
+        })
+        res.push(messageStandWithRes)
+      } catch (error) {
+        ctx.logger.error(`[chat_js] MCP工具调用失败 (${toolName}):`, error)
+        
+        // 保存错误信息，返回给AI处理
+        const errorResult = {
+          error: true,
+          message: error.message || '工具调用失败',
+          toolName,
+          toolArgs,
+        }
+        
+        const messageStandWithRes = this.ctx.helper.factoryMessageContent({
+          type: 'mcp',
+          id: toolCall.id,
+          name: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+          result: errorResult,
+        })
+        res.push(messageStandWithRes)
+      }
     }
     return res
   }
@@ -564,10 +682,10 @@ class ChatService extends Service {
       const updateData = {
         title: settings.title,
         system_prompt: settings.systemPrompt,
-        temperature: settings.temperature?.[0],
-        top_p: settings.top_p?.[0],
-        presence_penalty: settings.presence_penalty?.[0],
-        frequency_penalty: settings.frequency_penalty?.[0],
+        temperature: settings.temperature && settings.temperature[0],
+        top_p: settings.top_p && settings.top_p[0],
+        presence_penalty: settings.presence_penalty && settings.presence_penalty[0],
+        frequency_penalty: settings.frequency_penalty && settings.frequency_penalty[0],
       }
 
       // 如果存在 prompts 字段，将其存储为 JSON 字符串到 system_prompt 字段
@@ -585,7 +703,7 @@ class ChatService extends Service {
         // 格式：{"prompts": [...], "mainPrompt": "..."}
         const promptsData = JSON.stringify({
           prompts: settings.prompts,
-          mainPrompt: mainPrompt?.content || ''
+          mainPrompt: (mainPrompt && mainPrompt.content) || ''
         })
         // 如果 system_prompt 字段足够大，我们可以直接存储 JSON
         // 否则，我们需要使用另一个字段或者扩展字段
@@ -622,7 +740,8 @@ class ChatService extends Service {
           const parsed = JSON.parse(session.system_prompt)
           if (parsed.prompts && Array.isArray(parsed.prompts)) {
             prompts = parsed.prompts
-            systemPrompt = parsed.mainPrompt || parsed.prompts.find(p => p.isMain)?.content || ''
+            const mainPromptItem = parsed.prompts.find(p => p.isMain)
+            systemPrompt = parsed.mainPrompt || (mainPromptItem && mainPromptItem.content) || ''
           }
         }
       } catch (e) {
@@ -648,6 +767,138 @@ class ChatService extends Service {
     } catch (error) {
       ctx.logger.error('获取会话设置失败:', error)
       throw new Error(ctx.__('chat.get_settings_failed') + error.message)
+    }
+  }
+
+  /**
+   * 保存未完成的MCP调用状态
+   * @param {string} sessionId - 会话ID
+   * @param {string} state - MCP状态
+   * @param {Array} incompleteInfo - 未完成的tool_call信息
+   * @param {Object} msgSaved - 已保存的消息对象
+   */
+  async saveIncompleteMcpState(sessionId, state, incompleteInfo, msgSaved) {
+    const { ctx } = this
+    try {
+      let message = '\n\n[未完成的MCP工具调用]\n'
+      message += `状态: ${state}\n\n`
+      incompleteInfo.forEach((info, index) => {
+        message += `${index + 1}. 工具: ${info.name}\n`
+        message += `   参数片段: ${info.arguments.substring(0, 100)}${info.arguments.length > 100 ? '...' : ''}\n`
+        message += `   JSON状态: ${info.isComplete ? '完整' : '不完整'}\n\n`
+      })
+      message += '请回复"继续"以完成此工具调用。\n'
+      
+      // 添加状态标记
+      message += `\n[MCP_INCOMPLETE:${state}]\n`
+      message += JSON.stringify({ state, incompleteInfo }, null, 2)
+
+      if (msgSaved) {
+        await this.appendMsg(msgSaved.id, message)
+      } else {
+        await this.saveMsg(
+          'default-user',
+          'assistant',
+          message,
+          sessionId,
+        )
+      }
+    } catch (error) {
+      ctx.logger.error('保存未完成MCP状态失败:', error)
+    }
+  }
+
+  /**
+   * 检测是否有未完成的MCP调用（状态5：结果已保存但AI未处理）
+   * @param {string} sessionId - 会话ID
+   * @returns {Object|null} 未完成的MCP调用信息，如果没有返回null
+   */
+  async checkIncompleteMcpCall(sessionId) {
+    const { ctx } = this
+    try {
+      // 获取会话的最新消息
+      const messages = await this.getHistory(sessionId, 'default-user', 1, 20)
+      if (!messages.data || messages.data.length === 0) {
+        return null
+      }
+
+      // 查找最后一条助手消息
+      const lastAssistantMsg = messages.data
+        .slice()
+        .reverse()
+        .find(msg => msg.role === 'assistant')
+
+      if (!lastAssistantMsg) {
+        return null
+      }
+
+      // 检查是否包含tool_call指令
+      if (lastAssistantMsg.content.includes(':::tool_call')) {
+        // 检查是否有后续消息
+        const lastMsg = messages.data[messages.data.length - 1]
+        const hasFollowUp = lastMsg.id > lastAssistantMsg.id && 
+                           (lastMsg.role === 'user' || 
+                            (lastMsg.role === 'assistant' && 
+                             !lastMsg.content.includes(':::tool_call')))
+
+        if (!hasFollowUp) {
+          // 提取tool_call信息
+          const toolCallInfo = this.extractToolCallInfo(lastAssistantMsg.content)
+          if (toolCallInfo) {
+            return {
+              state: MCP_STATE.RESULT_SAVED_NOT_PROCESSED,
+              message: lastAssistantMsg,
+              toolCallInfo,
+            }
+          }
+        }
+      }
+
+      // 检查是否有未完成状态标记
+      const incompleteStateMatch = lastAssistantMsg.content.match(/\[MCP_INCOMPLETE:(\w+)\]/)
+      if (incompleteStateMatch) {
+        const state = incompleteStateMatch[1]
+        // 尝试提取tool_call信息
+        const jsonMatch = lastAssistantMsg.content.match(/\[MCP_INCOMPLETE:\w+\]\s*([\s\S]*)$/)
+        if (jsonMatch) {
+          try {
+            const stateInfo = JSON.parse(jsonMatch[1].trim())
+            return {
+              state,
+              message: lastAssistantMsg,
+              stateInfo,
+            }
+          } catch (e) {
+            ctx.logger.error('解析未完成状态信息失败:', e)
+          }
+        }
+      }
+
+      return null
+    } catch (error) {
+      ctx.logger.error('检测未完成MCP调用失败:', error)
+      return null
+    }
+  }
+
+  /**
+   * 从消息内容中提取tool_call信息
+   * @param {string} content - 消息内容
+   * @returns {Object|null} tool_call信息
+   */
+  extractToolCallInfo(content) {
+    try {
+      // 从 :::tool_call 指令中提取JSON信息
+      const match = content.match(/:::tool_call\{\.tool_call\}\s*([\s\S]*?)\s*:::/)
+      if (!match) {
+        return null
+      }
+
+      const toolCallInfo = JSON.parse(match[1])
+      return toolCallInfo
+    } catch (e) {
+      console.error('[chat_js] 提取tool_call信息失败:', e)
+      return null
     }
   }
 }

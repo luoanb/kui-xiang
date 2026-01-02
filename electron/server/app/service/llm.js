@@ -474,6 +474,41 @@ class LLMService extends BaseLLMService {
       config,
     }
     try {
+      // 检测状态5：结果已保存但AI未处理
+      const incompleteMcpCall = await chatService.checkIncompleteMcpCall(sessionId)
+      
+      if (incompleteMcpCall && incompleteMcpCall.state === 'RESULT_SAVED_NOT_PROCESSED') {
+        console.log('[llm_js]', '检测到未完成的MCP调用（状态5：结果已保存但AI未处理）')
+        
+        // 提取tool_call结果
+        if (incompleteMcpCall.toolCallInfo && incompleteMcpCall.toolCallInfo.result) {
+          // 将tool_call结果添加到messages数组
+          const toolCallResult = incompleteMcpCall.toolCallInfo.result
+          const resultContent = typeof toolCallResult === 'string' 
+            ? toolCallResult 
+            : JSON.stringify(toolCallResult, null, 2)
+          
+          messages.push({
+            role: 'assistant',
+            content: incompleteMcpCall.message.content, // 包含tool_call指令和结果
+          })
+          
+          console.log('[llm_js]', '已恢复未完成的MCP调用结果，继续处理')
+        } else {
+          // 如果无法提取结果，尝试从消息内容中提取
+          const extractedInfo = chatService.extractToolCallInfo(incompleteMcpCall.message.content)
+          if (extractedInfo && extractedInfo.result) {
+            messages.push({
+              role: 'assistant',
+              content: incompleteMcpCall.message.content,
+            })
+            console.log('[llm_js]', '从消息内容中提取tool_call结果，继续处理')
+          } else {
+            console.log('[llm_js]', '无法提取tool_call结果，继续正常流程')
+          }
+        }
+      }
+
       const lastMessage = messages[messages.length - 1]
       let docs = await this.getDocsByContextId(context, lastMessage)
       let service = this.getProviderService(provider)

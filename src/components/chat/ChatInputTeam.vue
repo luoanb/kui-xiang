@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PopoverAnchor } from "reka-ui";
-import { CornerDownLeft, Mic, Star } from "lucide-vue-next";
+import { CornerDownLeft, Mic, Star, Square } from "lucide-vue-next";
 import UseTool from "@/components/chat/UseTool.vue";
 import UseKnowledgeBase from "@/components/chat/UseKnowledgeBase.vue";
 import { useSessionStore } from "@/stores/session";
@@ -22,9 +22,13 @@ interface TeamPrompt {
 }
 
 const msg = ref("");
-const emit = defineEmits(["sendMsg", "promptSelected"]);
+const emit = defineEmits(["sendMsg", "promptSelected", "stop"]);
 const props = defineProps({
   disabled: {
+    type: Boolean,
+    default: false,
+  },
+  loading: {
     type: Boolean,
     default: false,
   },
@@ -33,6 +37,10 @@ const props = defineProps({
     required: true,
   },
 });
+
+const handleStop = () => {
+  emit("stop");
+};
 
 const sessionStore = useSessionStore();
 const prompts = ref<TeamPrompt[]>([]); // 实际使用的提示词列表（不包含"无"）
@@ -445,12 +453,23 @@ const handleRecord = () => {
           <Mic class="size-3.5" />
         </Button>
         <Button
+          v-if="!loading"
           type="submit"
           :disabled="disabled"
           size="icon"
           class="ml-auto gap-1.5"
         >
           <CornerDownLeft class="size-3.5" />
+        </Button>
+        <Button
+          v-else
+          type="button"
+          @click="handleStop"
+          variant="destructive"
+          size="icon"
+          class="ml-auto gap-1.5"
+        >
+          <Square class="size-3.5" />
         </Button>
       </div>
     </form>

@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowUpToLine } from "lucide-vue-next"
-import { CornerDownLeft, Mic } from "lucide-vue-next"
+import { CornerDownLeft, Mic, Square } from "lucide-vue-next"
 import UseTool from "@/components/chat/UseTool.vue" // 导入 UseTool 组件
 import UseKnowledgeBase from "@/components/chat/UseKnowledgeBase.vue" // 导入 UseKnowledgeBase 组件
 
@@ -12,13 +12,21 @@ const { t } = useI18n()
 
 const count = ref(0)
 const msg = ref("")
-const emit = defineEmits(["sendMsg"])
+const emit = defineEmits(["sendMsg", "stop"])
 const props = defineProps({
   disabled: {
     type: Boolean,
     default: false,
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
 })
+
+const handleStop = () => {
+  emit("stop")
+}
 
 const handleSendMsg = (e: Event) => {
   if(!msg.value.trim()) return
@@ -96,12 +104,23 @@ const handleRecord = () => {
           <Mic class="size-3.5" />
         </Button>
         <Button
+          v-if="!loading"
           type="submit"
           :disabled="disabled"
           size="icon"
           class="ml-auto gap-1.5 "
         >
           <CornerDownLeft class="size-3.5" />
+        </Button>
+        <Button
+          v-else
+          type="button"
+          @click="handleStop"
+          variant="destructive"
+          size="icon"
+          class="ml-auto gap-1.5 "
+        >
+          <Square class="size-3.5" />
         </Button>
       </div>
     </form>

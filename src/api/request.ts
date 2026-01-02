@@ -165,6 +165,8 @@ export const chatApi = {
       presence_penalty?: number;
       frequency_penalty?: number;
     },
+    signal?: AbortSignal, // AbortSignal用于取消请求
+    onStreamEnd?: () => void, // 流式响应结束的回调
   ) {
 
     const requestBody: any = { model, messages, sessionId }
@@ -190,16 +192,25 @@ export const chatApi = {
 
     try {
       const currentLang = i18n.global.locale.value
-      const response = await fetch(API_BASE_URL + '/api/local/chat', {
+      const fetchOptions: RequestInit = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept-Language': currentLang,
         },
-        body: JSON.stringify(requestBody)
-      })
-      handleStream(response, onProgress, onProgressReasoning)
-    } catch (error) {
+        body: JSON.stringify(requestBody),
+      }
+      // 只有当signal存在时才添加
+      if (signal) {
+        fetchOptions.signal = signal
+      }
+      const response = await fetch(API_BASE_URL + '/api/local/chat', fetchOptions)
+      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd)
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('[request_ts]', '请求已取消')
+        throw error
+      }
       console.error('Chat error:', error)
       throw error
     }
@@ -401,6 +412,8 @@ export const llmApi = {
       presence_penalty?: number;
       frequency_penalty?: number;
     },
+    signal?: AbortSignal, // AbortSignal用于取消请求
+    onStreamEnd?: () => void, // 流式响应结束的回调
   ) {
     const provider = model.provider_id
 
@@ -426,23 +439,32 @@ export const llmApi = {
     }
 
     try {
-      const response = await fetch(API_BASE_URL + '/api/llm/chat', {
+      const fetchOptions: RequestInit = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept-Language': i18n.global.locale.value,
         },
-        body: JSON.stringify(requestBody)
-      })
-      handleStream(response, onProgress, onProgressReasoning)
-    } catch (error) {
+        body: JSON.stringify(requestBody),
+      }
+      // 只有当signal存在时才添加
+      if (signal) {
+        fetchOptions.signal = signal
+      }
+      const response = await fetch(API_BASE_URL + '/api/llm/chat', fetchOptions)
+      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd)
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('[request_ts]', '请求已取消')
+        throw error
+      }
       console.error('Chat error:', error)
       throw error
     }
   },
 }
 
-const handleStream = async (response, onProgress, onProgressReasoning) => {
+const handleStream = async (response, onProgress, onProgressReasoning, signal?: AbortSignal, onStreamEnd?: () => void) => {
   const reader = response.body?.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -452,8 +474,24 @@ const handleStream = async (response, onProgress, onProgressReasoning) => {
 
   try {
     while (true) {
+      // 检查是否已取消
+      if (signal?.aborted) {
+        console.log('[request_ts]', '请求已取消，停止读取流')
+        reader.cancel()
+        throw new DOMException('请求已取消', 'AbortError')
+      }
+      
       const { done, value } = await reader.read()
-      if (done) break
+      if (done) {
+        break
+      }
+      
+      // 再次检查是否已取消（在读取后）
+      if (signal?.aborted) {
+        console.log('[request_ts]', '请求已取消，停止读取流')
+        reader.cancel()
+        throw new DOMException('请求已取消', 'AbortError')
+      }
 
       const processChunk = chunk => {
         buffer += chunk
@@ -502,6 +540,14 @@ const handleStream = async (response, onProgress, onProgressReasoning) => {
       }
       processChunk(decoder.decode(value, { stream: true }))
     }
+    // 流正常结束，调用回调
+    onStreamEnd?.()
+  } catch (error: any) {
+    if (error.name === 'AbortError' || signal?.aborted) {
+      console.log('[request_ts]', '流读取已取消')
+      throw error
+    }
+    throw error
   } finally {
     reader?.releaseLock()
   }
