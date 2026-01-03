@@ -136,7 +136,7 @@ class DeepseekService extends BaseLLMService {
       //     ]
       //   : mergedMessages
 
-      console.log('[common_js]', sessionSettings)
+      // console.log('[common_js]', sessionSettings)
 
       // 如果 config 中有 promptConfig，使用它；否则使用 sessionSettings
       const promptConfig = config?.promptConfig || {}

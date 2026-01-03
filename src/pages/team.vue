@@ -204,7 +204,7 @@ const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
     } : undefined;
 
     // 记录是否是第一次对话（用于标题更新）
-    const isFirstMessage = chatHistory.value.length === 2 && activeSession.value.title === '👋 Hi';
+    const isFirstMessage = chatHistory.value.length === 2 && activeSession.value.title === '新对话';
     
     // 使用 Team 对话 API，传递 enableMcp 开关
     await teamPromptApi.sendMessage(
@@ -409,13 +409,6 @@ onMounted(() => {
           <Separator orientation="vertical" class="mr-2 h-4 max-sm:hidden" />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbPage
-                  class="max-w-[200px] truncate max-sm:text-zinc-600"
-                  >{{ activeSession.title }}</BreadcrumbPage
-                >
-              </BreadcrumbItem>
-              <BreadcrumbSeparator class="hidden md:block" />
               <BreadcrumbItem class="hidden md:block">
                 <ModelSelect></ModelSelect>
               </BreadcrumbItem>

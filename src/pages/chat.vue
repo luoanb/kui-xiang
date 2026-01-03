@@ -183,7 +183,7 @@ const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
       reasoning_content: "",
     })
     // 记录是否是第一次对话（用于标题更新）
-    const isFirstMessage = chatHistory.value.length === 2 && activeSession.value.title === '👋 Hi'
+    const isFirstMessage = chatHistory.value.length === 2 && activeSession.value.title === '新对话'
     
     // 发送消息并处理流式响应
     await llmApi.sendMessageLlm(
