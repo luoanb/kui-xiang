@@ -3,11 +3,19 @@
     "ok": "OK",
     "cancel": "Cancel",
     "save": "Save",
+    "create": "Create",
     "delete": "Delete",
     "edit": "Edit",
+    "close": "Close",
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
+    "failed": "Failed",
+    "update": "Update",
+    "confirmDelete": "Confirm Delete",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "openMenu": "Open Menu",
     "timeGroup": {
       "today": "Today",
       "yesterday": "Yesterday",
@@ -57,12 +65,19 @@
     "discover": {
       "title": "Discover"
     },
+    "team": {
+      "title": "Team"
+    },
     "mcp": {
       "title": "MCP"
     },
-    "team": {
-      "title": "Team"
-    }
+    "speakWithEdgeTts": "Speak with Edge TTS",
+    "stopEdgeTtsSpeaking": "Stop Edge TTS Speaking",
+    "speakWithVolcano": "Speak with Volcano",
+    "stopVolcanoSpeaking": "Stop Volcano Speaking",
+    "speak": "Speak",
+    "stopSpeaking": "Stop Speaking",
+    "copyMessage": "Copy Message"
   },
   "mcp": {
     "title": "MCP Management",
@@ -87,21 +102,22 @@
       "install": "Install this application"
     },
     "messages": {
-      "refreshSuccess": "Refresh Successful",
-      "refreshSuccessDesc": "MCP server list has been updated",
-      "refreshFailed": "Refresh Failed",
-      "updateSuccess": "Update Successful",
-      "updateSuccessDesc": "Updated {name}",
-      "startSuccess": "Start Successful",
-      "startSuccessDesc": "Started {name}",
-      "startFailed": "Start Failed",
-      "stopSuccess": "Stop Successful",
-      "stopSuccessDesc": "Stopped {name}",
-      "stopFailed": "Stop Failed",
-      "deleteSuccess": "Delete Successful",
-      "deleteSuccessDesc": "Deleted {name}",
-      "deleteFailed": "Delete Failed",
-      "unknownError": "Unknown Error"
+        "refreshSuccess": "Refresh Successful",
+        "refreshSuccessDesc": "MCP server list has been updated",
+        "refreshFailed": "Refresh Failed",
+        "updateSuccess": "Update Successful",
+        "updateSuccessDesc": "Updated {name}",
+        "updateFailed": "Update Failed",
+        "startSuccess": "Start Successful",
+        "startSuccessDesc": "Started {name}",
+        "startFailed": "Start Failed",
+        "stopSuccess": "Stop Successful",
+        "stopSuccessDesc": "Stopped {name}",
+        "stopFailed": "Stop Failed",
+        "deleteSuccess": "Delete Successful",
+        "deleteSuccessDesc": "Deleted {name}",
+        "deleteFailed": "Delete Failed",
+        "unknownError": "Unknown Error"
     },
     "dialog": {
       "confirmDelete": "Confirm Delete",
@@ -276,7 +292,18 @@
       "selectRerankModel": "Select Reranking Model",
       "rerankModel": "Reranking Model",
       "rerankModelDesc": "Reranking models sort search results",
-      "moreConfig": "More Configuration"
+      "moreConfig": "More Configuration",
+      "fetchFailed": "Fetch Failed",
+      "unknownError": "Unknown Error",
+      "confirmDelete": "Confirm Delete",
+      "confirmDeleteDesc": "This action will delete the knowledge base, this cannot be undone.",
+      "editBase": "Edit Knowledge Base",
+      "editBaseDesc": "Edit the basic information of the knowledge base",
+      "deleteFailed": "Delete Failed",
+      "titleRequired": "Title is required",
+      "createFailed": "Create Failed",
+      "updateFailed": "Update Failed",
+      "setDefaultFailed": "Set Default Failed"
     },
     "document": {
       "name": "Document Name",
@@ -316,7 +343,22 @@
       "noChunks": "This document has no chunk data",
       "fetchChunksFailed": "Failed to fetch chunks",
       "chunksEmpty": "Chunk data is empty",
-      "chunksEmptyDesc": "This document may not have finished processing"
+      "chunksEmptyDesc": "This document may not have finished processing",
+      "fetchFailed": "Fetch Failed",
+      "downloadStarted": "Download Started",
+      "downloadStartedDesc": "Document download has started",
+      "deleteSuccess": "Delete Successful",
+      "deleteSuccessDesc": "Document has been deleted",
+      "deleteFailed": "Delete Failed",
+      "enableSuccess": "Enable Successful",
+      "disableSuccess": "Disable Successful",
+      "toggleStatusDesc": "Document has been {status}",
+      "updateFailed": "Update Failed",
+      "download": "Download",
+      "noFilesSelected": "No Files Selected",
+      "pleaseSelectFiles": "Please select files to upload",
+      "selectedFiles": "{count} files selected",
+      "uploadComplete": "Upload Complete"
     }
   },
   "discover": {
@@ -438,7 +480,21 @@
       "connectivityCheck": "Connectivity Check",
       "selectModelToTest": "Select a model to test connectivity",
       "availableModels": "Available Models",
-      "enableModel": "Enable this model in chat"
+      "enableModel": "Enable this model in chat",
+      "editModel": "Edit Model",
+      "addModel": "Add Model",
+      "editModelDesc": "Edit API model configuration",
+      "addModelDesc": "Add a new API model",
+      "formError": "Form Error",
+      "formErrorDesc": "Please check the form for correctness",
+      "updateSuccess": "Update Successful",
+      "updateSuccessDesc": "Model configuration has been updated",
+      "addSuccess": "Add Successful",
+      "addSuccessDesc": "Model has been added",
+      "updateFailed": "Update Failed",
+      "addFailed": "Add Failed",
+      "deleteModelSuccess": "Delete Successful",
+      "confirmDeleteModelDesc": "This action will delete the model, this cannot be undone."
     },
     "localModel": {
       "serviceNotResponding": "Service Not Responding",
@@ -486,7 +542,12 @@
       "currentLanguageVoices": "Current Language Voices",
       "selectVoice": "Select Voice",
       "testTextTitle": "Test Text",
-      "testText": "eechat is great, i like it!"
+      "testText": "eechat is great, i like it!",
+      "getVoicesFailed": "Failed to get voices",
+      "selectVoiceFirst": "Please select a voice first",
+      "testFailed": "Test Failed",
+      "enterTestText": "Please enter test text",
+      "test": "Test"
     },
     "proxy": {
       "title": "Proxy Settings",

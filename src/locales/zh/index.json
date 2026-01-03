@@ -10,6 +10,12 @@
     "error": "错误",
     "success": "成功",
     "close": "关闭",
+    "failed": "失败",
+    "update": "更新",
+    "confirmDelete": "确认删除",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "openMenu": "打开菜单",
     "timeGroup": {
       "today": "今天",
       "yesterday": "昨天",
@@ -61,7 +67,17 @@
     },
     "team": {
       "title": "团队"
-    }
+    },
+    "mcp": {
+      "title": "MCP"
+    },
+    "speakWithEdgeTts": "使用Edge TTS朗读",
+    "stopEdgeTtsSpeaking": "停止Edge TTS朗读",
+    "speakWithVolcano": "使用火山TTS朗读",
+    "stopVolcanoSpeaking": "停止火山TTS朗读",
+    "speak": "朗读",
+    "stopSpeaking": "停止朗读",
+    "copyMessage": "复制消息"
   },
   "mcp": {
     "title": "MCP管理",
@@ -86,21 +102,22 @@
       "install": "安装此应用"
     },
     "messages": {
-      "refreshSuccess": "刷新成功",
-      "refreshSuccessDesc": "MCP服务器列表已更新",
-      "refreshFailed": "刷新失败",
-      "updateSuccess": "更新成功",
-      "updateSuccessDesc": "已更新 {name}",
-      "startSuccess": "启动成功",
-      "startSuccessDesc": "已启动 {name}",
-      "startFailed": "启动失败",
-      "stopSuccess": "停止成功",
-      "stopSuccessDesc": "已停止 {name}",
-      "stopFailed": "停止失败",
-      "deleteSuccess": "删除成功",
-      "deleteSuccessDesc": "已删除 {name}",
-      "deleteFailed": "删除失败",
-      "unknownError": "未知错误"
+        "refreshSuccess": "刷新成功",
+        "refreshSuccessDesc": "MCP服务器列表已更新",
+        "refreshFailed": "刷新失败",
+        "updateSuccess": "更新成功",
+        "updateSuccessDesc": "已更新 {name}",
+        "updateFailed": "更新失败",
+        "startSuccess": "启动成功",
+        "startSuccessDesc": "已启动 {name}",
+        "startFailed": "启动失败",
+        "stopSuccess": "停止成功",
+        "stopSuccessDesc": "已停止 {name}",
+        "stopFailed": "停止失败",
+        "deleteSuccess": "删除成功",
+        "deleteSuccessDesc": "已删除 {name}",
+        "deleteFailed": "删除失败",
+        "unknownError": "未知错误"
     },
     "dialog": {
       "confirmDelete": "确认删除",
@@ -275,7 +292,18 @@
       "selectRerankModel": "选择重排模型",
       "rerankModel": "重排模型",
       "rerankModelDesc": "重排模型用于对搜索结果进行排序",
-      "moreConfig": "更多配置"
+      "moreConfig": "更多配置",
+      "fetchFailed": "获取失败",
+      "unknownError": "未知错误",
+      "confirmDelete": "确认删除",
+      "confirmDeleteDesc": "此操作将删除知识库，删除后无法恢复。",
+      "editBase": "编辑知识库",
+      "editBaseDesc": "编辑知识库的基本信息",
+      "deleteFailed": "删除失败",
+      "titleRequired": "标题不能为空",
+      "createFailed": "创建失败",
+      "updateFailed": "更新失败",
+      "setDefaultFailed": "设置默认失败"
     },
     "document": {
       "name": "文档名称",
@@ -315,7 +343,22 @@
       "noChunks": "该文档没有分片数据",
       "fetchChunksFailed": "获取分片失败",
       "chunksEmpty": "分片数据为空",
-      "chunksEmptyDesc": "该文档可能尚未处理完成"
+      "chunksEmptyDesc": "该文档可能尚未处理完成",
+      "fetchFailed": "获取失败",
+      "downloadStarted": "下载开始",
+      "downloadStartedDesc": "文档下载已开始",
+      "deleteSuccess": "删除成功",
+      "deleteSuccessDesc": "文档已删除",
+      "deleteFailed": "删除失败",
+      "enableSuccess": "启用成功",
+      "disableSuccess": "禁用成功",
+      "toggleStatusDesc": "已{status}文档",
+      "updateFailed": "更新失败",
+      "download": "下载",
+      "noFilesSelected": "未选择文件",
+      "pleaseSelectFiles": "请选择要上传的文件",
+      "selectedFiles": "已选择 {count} 个文件",
+      "uploadComplete": "上传完成"
     }
   },
   "discover": {
@@ -438,7 +481,21 @@
       "connectivityCheck": "连通性检查",
       "selectModelToTest": "选择要测试连通性的模型",
       "availableModels": "可用模型",
-      "enableModel": "开启后可在聊天中使用该模型"
+      "enableModel": "开启后可在聊天中使用该模型",
+      "editModel": "编辑模型",
+      "addModel": "添加模型",
+      "editModelDesc": "编辑API模型配置",
+      "addModelDesc": "添加新的API模型",
+      "formError": "表单错误",
+      "formErrorDesc": "请检查表单填写是否正确",
+      "updateSuccess": "更新成功",
+      "updateSuccessDesc": "模型配置已更新",
+      "addSuccess": "添加成功",
+      "addSuccessDesc": "模型已添加",
+      "updateFailed": "更新失败",
+      "addFailed": "添加失败",
+      "deleteModelSuccess": "删除成功",
+      "confirmDeleteModelDesc": "此操作将删除该模型，删除后无法恢复。"
     },
     "localModel": {
       "serviceNotResponding": "服务未响应",
@@ -491,7 +548,12 @@
       "currentLanguageVoices": "当前语言可用音色",
       "selectVoice": "选择音色",
       "testTextTitle": "测试文本",
-      "testText": "eechat 真棒，我很喜欢！"
+      "testText": "eechat 真棒，我很喜欢！",
+      "getVoicesFailed": "获取音色失败",
+      "selectVoiceFirst": "请先选择音色",
+      "testFailed": "测试失败",
+      "enterTestText": "请输入测试文本",
+      "test": "测试"
     },
     "proxy": {
       "title": "代理设置",

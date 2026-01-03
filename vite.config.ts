@@ -122,13 +122,22 @@ export default defineConfig(({ command }) => {
                   {
                     name: 'copy-package-json',
                     writeBundle() {
-                      // 复制 package.json 到 dist-electron 目录
+                      // 复制 package.json 到 dist-electron 目录，并修正 main 字段
                       const pkgPath = path.join(__dirname, 'package.json')
                       const destPath = path.join(
                         __dirname,
                         'dist-electron/package.json',
                       )
-                      fs.copyFileSync(pkgPath, destPath)
+                      // 读取并修改 package.json
+                      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+                      // 修正 main 字段：相对于 dist-electron 目录
+                      pkg.main = 'main/index.js'
+                      // 写回文件
+                      fs.writeFileSync(
+                        destPath,
+                        JSON.stringify(pkg, null, 2) + '\n',
+                        'utf-8',
+                      )
                     },
                   },
                 ],

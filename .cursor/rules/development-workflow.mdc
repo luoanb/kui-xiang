@@ -29,3 +29,10 @@ alwaysApply: true
 - Electron 应用需测试主进程和渲染进程交互
 - 跨平台功能需在 Windows、macOS、Linux 验证
 - 确保构建产物可正常打包和运行
+
+## Electron Server 构建处理
+- **依赖统一管理**：`electron/server/package.json` 的 dependencies 仅作文档参考，实际依赖统一在主 `package.json` 中管理
+- **构建时处理**：Vite 构建时通过 `copy-server` 插件复制 server 代码到 `dist-electron/server`，排除 `node_modules`
+- **打包时处理**：electron-builder 将主 `package.json` 的 dependencies 打包到 `app.asar`，server 代码打包到 `app.asar.unpacked/`
+- **运行时解析**：Server 从 `app.asar.unpacked/` 运行，依赖通过 Node.js 模块解析机制从 `app.asar` 中获取
+- **版本同步**：新增或更新 server 依赖时，需同步更新主 `package.json`，保持两个文件的依赖版本一致

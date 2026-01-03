@@ -223,10 +223,9 @@ const groupedSessions = computed(() => {
             }}</SidebarGroupLabel>
             <SidebarGroupContent>
               <template v-for="item in sessions" :key="item.id">
-                <a
+                <div
                   @click="handleSessionChange(item)"
-                  href="#"
-                  class="group/item flex justify-between items-center px-4 py-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  class="group/item flex justify-between items-center px-4 py-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer"
                   :class="
                     item.id === activeSessionId
                       ? 'bg-sidebar-accent text-sidebar-accent-foreground'
@@ -263,7 +262,7 @@ const groupedSessions = computed(() => {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </a>
+                </div>
               </template>
             </SidebarGroupContent>
           </template>

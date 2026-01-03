@@ -8,8 +8,20 @@ import { llmApi, ollamaApi } from "@/api/request"
 import { LLMProvider, ModelProvider } from "@/types/llm"
 import { useRouter } from "vue-router"
 import { useColorMode } from '@vueuse/core'
-import { Analytics } from '@vercel/analytics/vue'
 import GlobalSpeechIndicator from '@/components/speech/GlobalSpeechIndicator.vue'
+
+// 存储环境变量
+const isProd = import.meta.env.PROD
+
+// 只在生产环境下引入 Vercel Analytics
+// 使用条件导入，避免异步 setup
+let Analytics = null
+if (isProd) {
+  // 动态导入，避免在开发环境下加载
+  import('@vercel/analytics/vue').then(m => {
+    Analytics = m.Analytics
+  })
+}
 const mode = useColorMode()
 
 const modelStore = useModelStore()
@@ -95,7 +107,8 @@ console.log('[App_vue]', `isweb:`, envStore.isWeb)
     <Layout></Layout>
     <GlobalSpeechIndicator />
   </div>
-  <Analytics mode="production" />
+  <!-- 只在生产环境下渲染 Vercel Analytics -->
+  <Analytics v-if="isProd" mode="production" />
 </template>
 
 <style>

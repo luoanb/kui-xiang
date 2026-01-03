@@ -97,6 +97,22 @@ async function createWindow() {
     win.loadURL(VITE_DEV_SERVER_URL)
     // 开发模式下始终打开开发者工具
     win.webContents.openDevTools()
+    
+    // 开发模式下，确保 DevTools 可以访问 Memory 面板
+    if (process.env.NODE_ENV !== 'production') {
+      // 延迟打开，确保页面加载完成
+      win.webContents.once('did-finish-load', () => {
+        // 输出提示信息
+        console.log('\n=== Chrome DevTools 内存分析指南 ===')
+        console.log('1. 打开 DevTools (F12 或 Ctrl+Shift+I)')
+        console.log('2. 切换到 "Memory" 标签')
+        console.log('3. 选择 "Heap snapshot" 或 "Allocation instrumentation on timeline"')
+        console.log('4. 点击 "Take snapshot" 记录内存快照')
+        console.log('5. 操作应用后再次快照，对比差异')
+        console.log('6. 使用 IPC: window.electronAPI.invoke("get-renderer-memory-info") 获取内存信息')
+        console.log('=====================================\n')
+      })
+    }
   } else {
     win.loadFile(indexHtml)
     // 生产模式下也可以通过环境变量控制是否打开开发者工具
@@ -196,10 +212,89 @@ const initUpdate = () => {
   }
 }
 
+// 内存监控函数
+function startMemoryMonitor() {
+  if (process.env.NODE_ENV !== 'production') {
+    const formatMB = (bytes: number) => (bytes / 1024 / 1024).toFixed(2)
+    
+    setInterval(() => {
+      const mem = process.memoryUsage()
+      
+      log.info('[Memory Monitor]', {
+        rss: `${formatMB(mem.rss)} MB`,
+        heapUsed: `${formatMB(mem.heapUsed)} MB`,
+        heapTotal: `${formatMB(mem.heapTotal)} MB`,
+        external: `${formatMB(mem.external)} MB`,
+        arrayBuffers: `${formatMB(mem.arrayBuffers)} MB`
+      })
+      
+      // 内存警告阈值
+      if (mem.heapUsed > 500 * 1024 * 1024) { // 500MB
+        log.warn('[Memory Monitor] 警告: 堆内存使用超过 500MB')
+      }
+      if (mem.rss > 1024 * 1024 * 1024) { // 1GB
+        log.warn('[Memory Monitor] 警告: RSS 内存使用超过 1GB')
+      }
+    }, 10000) // 每 10 秒监控一次
+    
+    log.info('[Memory Monitor] 内存监控已启动')
+  }
+}
+
+// 监控渲染进程内存（通过 DevTools API）
+function monitorRendererMemory() {
+  if (win && !win.isDestroyed() && process.env.NODE_ENV !== 'production') {
+    win.webContents.executeJavaScript(`
+      (() => {
+        if (performance.memory) {
+          return {
+            usedJSHeapSize: performance.memory.usedJSHeapSize,
+            totalJSHeapSize: performance.memory.totalJSHeapSize,
+            jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
+          }
+        }
+        return null
+      })()
+    `).then((mem: any) => {
+      if (mem) {
+        const formatMB = (bytes: number) => (bytes / 1024 / 1024).toFixed(2)
+        log.info('[Renderer Memory]', {
+          used: `${formatMB(mem.usedJSHeapSize)} MB`,
+          total: `${formatMB(mem.totalJSHeapSize)} MB`,
+          limit: `${formatMB(mem.jsHeapSizeLimit)} MB`,
+          usage: `${((mem.usedJSHeapSize / mem.jsHeapSizeLimit) * 100).toFixed(2)}%`
+        })
+        
+        // 渲染进程内存警告
+        if (mem.usedJSHeapSize > mem.jsHeapSizeLimit * 0.8) {
+          log.warn('[Renderer Memory] 警告: 渲染进程内存使用超过 80%')
+        }
+      }
+    }).catch((err) => {
+      // 忽略错误，可能是页面未加载完成
+    })
+  }
+}
+
 // 在 app ready 时启动 EggJS
 app.whenReady().then(async () => {
   try {
+    startMemoryMonitor()
     createWindow()
+    
+    // 启动渲染进程内存监控
+    if (process.env.NODE_ENV !== 'production') {
+      // 等待窗口加载完成后开始监控
+      if (win) {
+        win.webContents.once('did-finish-load', () => {
+          // 每 10 秒监控一次渲染进程内存
+          setInterval(() => {
+            monitorRendererMemory()
+          }, 10000)
+        })
+      }
+    }
+    
     await startEggServer('')
     initUpdate()
     const playground = new Playground(win)
@@ -437,8 +532,67 @@ ipcMain.handle('stopEggServer', async (_, pathArg) => {
   }
 })
 
+// 获取主进程内存信息
+ipcMain.handle('get-memory-info', () => {
+  const mem = process.memoryUsage()
+  return {
+    rss: mem.rss,
+    heapUsed: mem.heapUsed,
+    heapTotal: mem.heapTotal,
+    external: mem.external,
+    arrayBuffers: mem.arrayBuffers
+  }
+})
+
+// 获取渲染进程内存信息
+ipcMain.handle('get-renderer-memory-info', async () => {
+  if (!win || win.isDestroyed()) {
+    return null
+  }
+  
+  try {
+    const mem = await win.webContents.executeJavaScript(`
+      (() => {
+        if (performance.memory) {
+          return {
+            usedJSHeapSize: performance.memory.usedJSHeapSize,
+            totalJSHeapSize: performance.memory.totalJSHeapSize,
+            jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
+          }
+        }
+        return null
+      })()
+    `)
+    return mem
+  } catch (error) {
+    log.error('[Memory] 获取渲染进程内存信息失败:', error)
+    return null
+  }
+})
+
+// 强制垃圾回收（仅在开发模式下，需要启动时添加 --expose-gc 标志）
+ipcMain.handle('force-gc', () => {
+  if (process.env.NODE_ENV !== 'production' && global.gc) {
+    global.gc()
+    log.info('[Memory] 已执行强制垃圾回收')
+    return true
+  }
+  return false
+})
+
 app.on('render-process-gone', (event, webContents, details) => {
-  console.error('渲染进程崩溃:', details.reason)
+  const mem = process.memoryUsage()
+  const formatMB = (bytes: number) => (bytes / 1024 / 1024).toFixed(2)
+  
+  log.error('渲染进程崩溃:', {
+    reason: details.reason,
+    exitCode: details.exitCode,
+    memory: {
+      rss: `${formatMB(mem.rss)} MB`,
+      heapUsed: `${formatMB(mem.heapUsed)} MB`,
+      heapTotal: `${formatMB(mem.heapTotal)} MB`
+    }
+  })
   app.exit()
 })
 

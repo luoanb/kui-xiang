@@ -2,7 +2,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "ee.chat.na",
-  "asar": true,
+  "asar": false,
   "productName": "eechat",
   "buildDependenciesFromSource": false,
   "nodeGypRebuild": false,
@@ -51,7 +51,6 @@
       }
     ],
     "artifactName": "${productName}-windows-${arch}-${version}-Setup.${ext}",
-    "asarUnpack": [],
     "sign": false,
     "signingHashAlgorithms": [],
     "forceCodeSigning": false,
