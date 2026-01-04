@@ -406,11 +406,27 @@ class McpService extends Service {
     try {
       // 配置文件路径
       const configFile = path.join(paths.configPath, 'mcp.config.json')
-      const defaultConfigFile = path.join(
-        __dirname,
-        './mcp.config.default.json',
-      )
-      // this.ctx.logger.info('[MCP]Config file path:', configFile)
+      
+      // 获取默认配置文件路径（兼容开发和生产环境）
+      let defaultConfigFile = path.join(__dirname, './mcp.config.default.json')
+      const isDev = process.env.NODE_ENV !== 'production'
+      
+      // 在生产环境中，尝试多个可能的路径
+      if (!isDev && !fs.existsSync(defaultConfigFile)) {
+        // 尝试从 process.resourcesPath 查找
+        if (process.resourcesPath) {
+          const altPath1 = path.join(process.resourcesPath, 'app.asar.unpacked', 'app', 'service', 'mcp.config.default.json')
+          const altPath2 = path.join(process.resourcesPath, 'app', 'service', 'mcp.config.default.json')
+          if (fs.existsSync(altPath1)) {
+            defaultConfigFile = altPath1
+          } else if (fs.existsSync(altPath2)) {
+            defaultConfigFile = altPath2
+          }
+        }
+      }
+      
+      this.ctx.logger.info('[MCP]默认配置文件路径:', defaultConfigFile)
+      this.ctx.logger.info('[MCP]默认配置文件是否存在:', fs.existsSync(defaultConfigFile))
 
       // 确保配置目录存在
       if (!fs.existsSync(paths.configPath)) {
@@ -422,8 +438,41 @@ class McpService extends Service {
         this.ctx.logger.info(
           '[MCP]Config file not found, creating from default template',
         )
-        const defaultConfig = fs.readFileSync(defaultConfigFile, 'utf8')
-        fs.writeFileSync(configFile, defaultConfig, 'utf8')
+        if (!fs.existsSync(defaultConfigFile)) {
+          this.ctx.logger.error('[MCP]默认配置文件不存在:', defaultConfigFile)
+          // 如果默认配置文件不存在，创建一个基本的默认配置
+          const basicDefaultConfig = {
+            mcpServers: {
+              filesystem: {
+                command: 'npx',
+                args: ['-y', '@modelcontextprotocol/server-filesystem', './'],
+                env: {},
+                enabled: true
+              },
+              puppeteer: {
+                command: 'npx',
+                args: ['-y', '@modelcontextprotocol/server-puppeteer'],
+                enabled: false
+              },
+              playwright: {
+                command: 'npx',
+                args: ['-y', '@playwright/mcp@latest'],
+                enabled: false
+              },
+              time: {
+                command: 'uvx',
+                args: ['mcp-server-time'],
+                enabled: false
+              }
+            }
+          }
+          fs.writeFileSync(configFile, JSON.stringify(basicDefaultConfig, null, 2), 'utf8')
+          this.ctx.logger.info('[MCP]已创建基本默认配置')
+        } else {
+          const defaultConfig = fs.readFileSync(defaultConfigFile, 'utf8')
+          fs.writeFileSync(configFile, defaultConfig, 'utf8')
+          this.ctx.logger.info('[MCP]已从默认模板创建配置文件')
+        }
       }
 
       // 读取配置文件

@@ -76,6 +76,9 @@ export default defineConfig(({ command }) => {
                         __dirname,
                         'dist-electron/server',
                       )
+                      
+                      console.log('[build] 复制 server 目录:', srcDir, '->', destDir)
+                      
                       fs.cpSync(srcDir, destDir, {
                         recursive: true,
                         filter: src => {
@@ -104,6 +107,21 @@ export default defineConfig(({ command }) => {
                           )
                         },
                       })
+                      
+                      // 验证关键文件是否被复制
+                      const criticalFiles = [
+                        path.join(destDir, 'app', 'service', 'mcp.config.default.json'),
+                        path.join(destDir, 'scripts', 'updateSQl', 'init', 'llm_providers.sql'),
+                        path.join(destDir, 'scripts', 'updateSQl', 'init', 'llm_models.sql'),
+                      ]
+                      
+                      for (const file of criticalFiles) {
+                        if (fs.existsSync(file)) {
+                          console.log('[build] ✓ 关键文件已复制:', file)
+                        } else {
+                          console.warn('[build] ✗ 关键文件缺失:', file)
+                        }
+                      }
                     },
                   },
                   {

@@ -13,8 +13,29 @@ let pkg = null
 // const dbPath = path.join(__dirname, '../database/database.db')
 const dbPath = paths.databasePath
 
+// 获取SQL目录路径（兼容开发和生产环境）
+function getSqlDir() {
+  const isDev = process.env.NODE_ENV !== 'production'
+  let sqlDir = path.join(__dirname, './updateSQl')
+  
+  // 在生产环境中，如果默认路径不存在，尝试其他路径
+  if (!isDev && !fs.existsSync(sqlDir)) {
+    if (process.resourcesPath) {
+      const altPath1 = path.join(process.resourcesPath, 'app.asar.unpacked', 'scripts', 'updateSQl')
+      const altPath2 = path.join(process.resourcesPath, 'scripts', 'updateSQl')
+      if (fs.existsSync(altPath1)) {
+        sqlDir = altPath1
+      } else if (fs.existsSync(altPath2)) {
+        sqlDir = altPath2
+      }
+    }
+  }
+  
+  return sqlDir
+}
+
 // SQL目录
-const sqlDir = path.join(__dirname, './updateSQl')
+const sqlDir = getSqlDir()
 const initSqlDir = path.join(sqlDir, 'init')
 const updateSqlDir = path.join(sqlDir, 'update')
 
@@ -40,6 +61,11 @@ function getAppVersion() {
 
 // 获取所有SQL升级文件
 function getSqlUpdateFiles() {
+  if (!fs.existsSync(updateSqlDir)) {
+    logger.warn(`升级SQL目录不存在: ${updateSqlDir}，返回空数组`)
+    return []
+  }
+  
   const files = fs
     .readdirSync(updateSqlDir)
     .filter(file => file.endsWith('.sql'))
@@ -67,6 +93,33 @@ function getSqlUpdateFiles() {
 
 // 获取初始化SQL文件列表
 function getInitSqlFiles() {
+  if (!fs.existsSync(initSqlDir)) {
+    logger.error(`初始化SQL目录不存在: ${initSqlDir}`)
+    logger.info('尝试查找替代路径...')
+    // 尝试查找替代路径
+    const altPaths = []
+    if (process.resourcesPath) {
+      altPaths.push(
+        path.join(process.resourcesPath, 'app.asar.unpacked', 'scripts', 'updateSQl', 'init'),
+        path.join(process.resourcesPath, 'scripts', 'updateSQl', 'init')
+      )
+    }
+    for (const altPath of altPaths) {
+      if (fs.existsSync(altPath)) {
+        logger.info(`找到替代路径: ${altPath}`)
+        const files = fs
+          .readdirSync(altPath)
+          .filter(file => file.endsWith('.sql'))
+          .sort()
+        return files.map(file => ({
+          name: path.basename(file, '.sql'),
+          path: path.join(altPath, file),
+        }))
+      }
+    }
+    throw new Error(`无法找到初始化SQL目录: ${initSqlDir}`)
+  }
+  
   const files = fs
     .readdirSync(initSqlDir)
     .filter(file => file.endsWith('.sql'))
@@ -170,6 +223,13 @@ async function updateDatabase(appLogger) {
   }
 
   try {
+    // 记录SQL目录路径信息
+    logger.info(`SQL目录路径: ${sqlDir}`)
+    logger.info(`初始化SQL目录: ${initSqlDir}`)
+    logger.info(`升级SQL目录: ${updateSqlDir}`)
+    logger.info(`初始化SQL目录是否存在: ${fs.existsSync(initSqlDir)}`)
+    logger.info(`升级SQL目录是否存在: ${fs.existsSync(updateSqlDir)}`)
+    
     // 检查是否需要初始化
     const needInitialize = await checkNeedInitialize(db)
 
