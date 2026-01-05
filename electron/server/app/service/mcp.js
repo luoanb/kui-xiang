@@ -1400,6 +1400,131 @@ class McpService extends Service {
       }
     }
   }
+
+  /**
+   * 使用 AI 分析 README 内容并提取 MCP 服务器配置
+   * @param {string} readmeContent README 内容
+   * @returns {Promise<Object>} 提取的配置信息
+   */
+  async analyzeReadme(readmeContent) {
+    const { ctx } = this
+    try {
+      // 获取默认的 LLM 提供商和模型
+      const providers = await ctx.model.LlmProvider.findAll({
+        where: { state: true },
+        order: [['sort', 'ASC'], ['state', 'DESC']],
+        limit: 1,
+      })
+
+      if (!providers || providers.length === 0) {
+        throw new Error('未找到可用的 LLM 提供商')
+      }
+
+      const provider = providers[0]
+      
+      // 获取该提供商的模型列表
+      const configModels = await ctx.model.LlmConfigModel.findAll({
+        where: {
+          provider_id: provider.id,
+          state: true,
+        },
+        order: [['state', 'DESC']],
+        limit: 1,
+      })
+
+      let model
+      if (configModels && configModels.length > 0) {
+        model = {
+          id: configModels[0].model_id,
+          provider_id: provider.id,
+        }
+      } else {
+        // 如果没有配置的模型，使用默认模型
+        const llmService = ctx.service.llm
+        const defaultModels = await llmService.listModels(provider.id)
+        if (!defaultModels || defaultModels.length === 0) {
+          throw new Error('未找到可用的 LLM 模型')
+        }
+        model = {
+          id: defaultModels[0].id || defaultModels[0].model_id,
+          provider_id: provider.id,
+        }
+      }
+
+      // 构建提示词
+      const prompt = `你是一个专业的 MCP (Model Context Protocol) 配置分析专家。请仔细分析以下 README 内容，提取出 MCP 服务器的配置信息。
+
+README 内容：
+\`\`\`
+${readmeContent}
+\`\`\`
+
+请根据 README 内容提取以下配置信息，并以 JSON 格式返回：
+
+1. **serverKey**: 服务器标识（小写，使用连字符分隔，如 "playwright-mcp"）
+2. **transportType**: 传输类型，只能是 "stdio" 或 "sse"
+3. **command**: 如果是 stdio 类型，提取命令（如 "npx"）
+4. **args**: 如果是 stdio 类型，提取参数数组（每行一个参数）
+5. **env**: 如果是 stdio 类型，提取环境变量对象（键值对）
+6. **url**: 如果是 sse 类型，提取 URL
+7. **headers**: 如果是 sse 类型，提取请求头对象（键值对）
+
+注意：
+- 如果 README 中包含 JSON 配置示例（如 \`\`\`json ... \`\`\`），优先使用该配置
+- 如果没有明确的配置信息，请根据 README 的描述和示例进行合理推断
+- 如果无法确定某些字段，可以省略
+- 返回的 JSON 必须包含 serverKey 和 transportType 字段
+
+请直接返回 JSON 对象，不要包含其他说明文字。格式如下：
+{
+  "serverKey": "example-mcp",
+  "transportType": "stdio",
+  "command": "npx",
+  "args": ["@example/mcp"],
+  "env": {},
+  "url": "",
+  "headers": {}
+}`
+
+      const messages = [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ]
+
+      // 调用 LLM 进行分析
+      const llmService = ctx.service.llm
+      const response = await llmService.chatNoStream(messages, model, provider.id)
+
+      // 解析返回的 JSON
+      let config
+      try {
+        // 尝试提取 JSON（可能包含 markdown 代码块）
+        const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) || response.match(/```\s*([\s\S]*?)\s*```/)
+        const jsonStr = jsonMatch ? jsonMatch[1] : response.trim()
+        config = JSON.parse(jsonStr)
+      } catch (parseError) {
+        // 如果解析失败，尝试直接解析整个响应
+        try {
+          config = JSON.parse(response.trim())
+        } catch (e) {
+          ctx.logger.error('[MCP] AI 分析 README 返回的 JSON 解析失败:', e)
+          throw new Error('AI 返回的配置格式不正确，请检查 README 内容是否包含有效的配置信息')
+        }
+      }
+
+      // 验证必需的字段
+      if (!config.serverKey || !config.transportType) {
+        throw new Error('AI 返回的配置缺少必需字段（serverKey 或 transportType）')
+      }
+
+      return config
+    } catch (error) {
+      ctx.logger.error('[MCP] AI 分析 README 失败:', error)
+      throw error
+    }
+  }
 }
 
 module.exports = McpService

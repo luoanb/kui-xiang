@@ -139,25 +139,30 @@ const resetForm = () => {
 }
 
 // AI自动填充表单
-const autoFillForm = () => {
+const autoFillForm = async () => {
   // 如果既没有选中MCP也没有README内容，则不执行
-  if (!mcpStore.selectedMcp && !readmeContent.value) return
+  if (!mcpStore.selectedMcp && !readmeContent.value) {
+    toast({
+      title: t('mcp.addNew.messages.aiAnalyzing'),
+      description: t('mcp.addNew.validation.urlEmptyDesc'),
+      variant: "destructive",
+    })
+    return
+  }
 
   toast({
     title: t('mcp.addNew.messages.aiAnalyzing'),
     description: t('mcp.addNew.messages.aiAnalyzingDesc'),
   })
 
-  // 根据MCP信息自动填充表单
-  setTimeout(() => {
-    // 如果有选中的MCP，使用MCP信息
+  try {
+    let contentToAnalyze = ''
+    
+    // 如果有选中的MCP，优先使用MCP的README内容
     if (mcpStore.selectedMcp) {
       const mcp = mcpStore.selectedMcp
-
-      // 设置服务标识
-      serverKey.value = mcp.Name?.toLowerCase() || ""
-
-      // 根据README中的配置信息设置表单
+      
+      // 如果MCP有ServerConfig，直接使用配置填充（不需要AI分析）
       if (mcp.ServerConfig) {
         try {
           const configs = JSON.parse(mcp.ServerConfig)
@@ -165,6 +170,9 @@ const autoFillForm = () => {
             const config = configs[0]
             const serverName = Object.keys(config.mcpServers)[0]
             const serverConfig = config.mcpServers[serverName]
+
+            // 设置服务标识
+            serverKey.value = mcp.Name?.toLowerCase() || serverName.toLowerCase() || ""
 
             if (serverConfig.command) {
               transportType.value = "stdio"
@@ -196,66 +204,70 @@ const autoFillForm = () => {
                 formData.sse.headers = headerLines.join("\n")
               }
             }
+
+            toast({
+              title: t('mcp.addNew.messages.fillComplete'),
+              description: t('mcp.addNew.messages.fillCompleteDesc'),
+            })
+            return
           }
         } catch (e) {
-          console.error("解析ServerConfig失败:", e)
+          console.error('[AddNew_vue]', '解析ServerConfig失败:', e)
         }
-      }
-    } 
-    // 如果有手动获取的README内容，尝试从中提取配置信息
-    else if (readmeContent.value) {
-      // 尝试从README中提取服务名称作为服务标识
-      const nameMatch = readmeContent.value.match(/# ([a-zA-Z0-9_-]+)/);
-      if (nameMatch && nameMatch[1]) {
-        serverKey.value = nameMatch[1].toLowerCase();
       }
       
-      // 尝试从README中提取配置信息
-      try {
-        // 查找JSON配置块
-        const configMatch = readmeContent.value.match(/```json\s*({[\s\S]*?})\s*```/);
-        if (configMatch && configMatch[1]) {
-          const configJson = JSON.parse(configMatch[1]);
-          
-          // 检查是否包含MCP服务器配置
-          if (configJson.mcpServers) {
-            const serverName = Object.keys(configJson.mcpServers)[0];
-            const serverConfig = configJson.mcpServers[serverName];
-            
-            if (serverConfig.command) {
-              transportType.value = "stdio";
-              formData.stdio.command = serverConfig.command;
-              
-              // 处理参数
-              if (serverConfig.args && Array.isArray(serverConfig.args)) {
-                formData.stdio.args = serverConfig.args.join("\n");
-              }
-              
-              // 处理环境变量
-              if (serverConfig.env) {
-                const envVars = [];
-                for (const [key, value] of Object.entries(serverConfig.env)) {
-                  envVars.push(`${key}=${value}`);
-                }
-                formData.stdio.env = envVars.join("\n");
-              }
-            } else if (serverConfig.url) {
-              transportType.value = "sse";
-              formData.sse.url = serverConfig.url;
-              
-              // 处理请求头
-              if (serverConfig.headers) {
-                const headerLines = [];
-                for (const [key, value] of Object.entries(serverConfig.headers)) {
-                  headerLines.push(`${key}: ${value}`);
-                }
-                formData.sse.headers = headerLines.join("\n");
-              }
-            }
-          }
+      // 使用MCP的README内容进行分析
+      contentToAnalyze = mcp.ReadmeCN || mcp.Readme || ''
+    } else if (readmeContent.value) {
+      // 使用手动获取的README内容
+      contentToAnalyze = readmeContent.value
+    }
+
+    if (!contentToAnalyze.trim()) {
+      toast({
+        title: t('mcp.addNew.messages.aiAnalyzing'),
+        description: 'README 内容为空，无法进行分析',
+        variant: "destructive",
+      })
+      return
+    }
+
+    // 调用AI分析API
+    console.log('[AddNew_vue]', '开始调用AI分析API，README内容长度:', contentToAnalyze.length)
+    const config = await mcpApi.analyzeReadme(contentToAnalyze)
+    console.log('[AddNew_vue]', 'AI分析完成，返回配置:', config)
+    
+    // 填充表单
+    if (config.serverKey) {
+      serverKey.value = config.serverKey
+    }
+
+    if (config.transportType === 'stdio') {
+      transportType.value = "stdio"
+      if (config.command) {
+        formData.stdio.command = config.command
+      }
+      if (config.args && Array.isArray(config.args)) {
+        formData.stdio.args = config.args.join("\n")
+      }
+      if (config.env && typeof config.env === 'object') {
+        const envVars = []
+        for (const [key, value] of Object.entries(config.env)) {
+          envVars.push(`${key}=${value}`)
         }
-      } catch (e) {
-        console.error("从README中提取配置失败:", e);
+        formData.stdio.env = envVars.join("\n")
+      }
+    } else if (config.transportType === 'sse') {
+      transportType.value = "sse"
+      if (config.url) {
+        formData.sse.url = config.url
+      }
+      if (config.headers && typeof config.headers === 'object') {
+        const headerLines = []
+        for (const [key, value] of Object.entries(config.headers)) {
+          headerLines.push(`${key}: ${value}`)
+        }
+        formData.sse.headers = headerLines.join("\n")
       }
     }
 
@@ -263,7 +275,15 @@ const autoFillForm = () => {
       title: t('mcp.addNew.messages.fillComplete'),
       description: t('mcp.addNew.messages.fillCompleteDesc'),
     })
-  }, 1500)
+  } catch (error) {
+    console.error('[AddNew_vue]', 'AI分析README失败:', error)
+    const errorMessage = error?.response?.data?.message || error?.message || 'AI分析失败，请检查README内容或稍后重试'
+    toast({
+      title: t('mcp.addNew.messages.aiAnalyzing'),
+      description: errorMessage,
+      variant: "destructive",
+    })
+  }
 }
 
 // 检查是否为编辑模式

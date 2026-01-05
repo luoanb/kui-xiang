@@ -85,6 +85,7 @@ module.exports = app => {
   router.get('/api/mcp/restartServer', controller.mcp.restartServer)
   // MCP相关接口
   router.get('/api/mcp/fetch-readme', controller.mcp.fetchReadme)
+  router.post('/api/mcp/analyze-readme', controller.mcp.analyzeReadme) // AI分析README
   router.post('/api/mcp/add-server', controller.mcp.addServer)
   router.put('/api/mcp/update-server', controller.mcp.updateServer) // 新增更新接口
   // 新增：获取已安装的MCP服务器列表

@@ -148,5 +148,24 @@ class McpController extends Controller {
       ctx.body = ctx.helper.error(error.message)
     }
   }
+
+  // AI分析README并提取配置
+  async analyzeReadme() {
+    const { ctx } = this
+    const { readmeContent } = ctx.request.body
+    
+    try {
+      if (!readmeContent || !readmeContent.trim()) {
+        ctx.body = ctx.helper.error('README 内容不能为空')
+        return
+      }
+      
+      const config = await ctx.service.mcp.analyzeReadme(readmeContent)
+      ctx.body = ctx.helper.success(config)
+    } catch (error) {
+      ctx.logger.error('AI分析README失败:', error)
+      ctx.body = ctx.helper.error(error.message || 'AI分析失败')
+    }
+  }
 }
 module.exports = McpController;
