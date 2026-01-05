@@ -85,6 +85,15 @@ class ChatService extends Service {
         messages[messages.length - 1].content,
         sessionId,
       )
+      // 创建一条空的助手消息，确保在流式过程中消息已存在于数据库
+      // 这样即使切换对话，也能从数据库加载到最新的消息
+      msgSaved = await this.saveMsg(
+        'default-user',
+        'assistant',
+        '',
+        sessionId,
+      )
+      console.log('[chat_js_saveStream]', '流式响应开始，创建空助手消息:', msgSaved.id)
     }
     ctx.set({
       'Content-Type': 'text/event-stream;charset=utf-8',
@@ -98,8 +107,12 @@ class ChatService extends Service {
     try {
       const toolCallMerger = new ToolCallMerger()
       for await (const chunk of stream) {
-        // 检查响应是否已结束
+        // 检查响应是否已结束（中断场景）
         if (ctx.res.writableEnded) {
+          // 响应被中断，保存已有内容
+          if (assistantMessage && msgSaved) {
+            await this.appendMsg(sessionId, 'assistant', assistantMessage)
+          }
           break
         }
         if(!chunk.choices || !chunk.choices[0] || !chunk.choices[0].delta) {
@@ -324,19 +337,25 @@ class ChatService extends Service {
       }
 
       // 保存助手的完整回复（流式响应结束后的最后一段内容）
-      if (assistantMessage) {
-        if (msgSaved) {
-          // 如果已有保存的消息（可能包含MCP调用结果），追加到最后
+      if (msgSaved) {
+        // 如果已有保存的消息（流式开始时创建的或MCP调用结果），追加内容
+        if (assistantMessage) {
           await this.appendMsg(sessionId, 'assistant', assistantMessage)
+          console.log('[chat_js]', '流式响应正常结束，已追加内容到消息:', msgSaved.id)
         } else {
-          // 如果没有保存的消息，创建新消息
-          await this.saveMsg(
-            'default-user',
-            'assistant',
-            assistantMessage,
-            sessionId,
-          )
+          console.log('[chat_js]', '流式响应正常结束，但内容为空，消息已存在:', msgSaved.id)
         }
+      } else if (assistantMessage) {
+        // 如果没有保存的消息，创建新消息（这种情况应该很少，因为流式开始时已经创建了）
+        msgSaved = await this.saveMsg(
+          'default-user',
+          'assistant',
+          assistantMessage,
+          sessionId,
+        )
+        console.log('[chat_js]', '流式响应正常结束，创建新消息:', msgSaved.id)
+      } else {
+        console.log('[chat_js]', '流式响应正常结束，但既没有保存的消息也没有内容')
       }
 
       // 只有在响应尚未结束时才结束它
@@ -346,6 +365,14 @@ class ChatService extends Service {
       }
     } catch (error) {
       ctx.logger.error('Stream error:', error)
+      // 错误中断场景：保存已有内容
+      if (assistantMessage && msgSaved) {
+        try {
+          await this.appendMsg(sessionId, 'assistant', assistantMessage)
+        } catch (saveError) {
+          ctx.logger.error('[chat_js] 保存中断消息失败:', saveError)
+        }
+      }
       // 只在响应尚未结束时处理错误
       if (!ctx.res.writableEnded && !hasEnded) {
         await this.handleStreamError(
@@ -495,11 +522,11 @@ class ChatService extends Service {
   async saveMsg(uid, role, content, sessionId) {
     const { ctx } = this
 
-    // 参数验证
-    if (!uid || !role || !content || !sessionId) {
+    // 参数验证（content 可以为空字符串，用于流式响应开始时创建占位消息）
+    if (!uid || !role || content === undefined || content === null || !sessionId) {
       if (!uid) console.log('[chat_js]', 'uid is empty')
       if (!role) console.log('[chat_js]', 'role is empty')
-      if (!content) console.log('[chat_js]', 'content is empty')
+      if (content === undefined || content === null) console.log('[chat_js]', 'content is undefined or null')
       if (!sessionId) console.log('[chat_js]', 'sessionId is empty')
       throw new Error(ctx.__('chat.incomplete_params'))
     }

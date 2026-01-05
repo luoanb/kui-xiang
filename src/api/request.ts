@@ -217,8 +217,8 @@ export const chatApi = {
   },
 
   // 获取消息记录
-  async getMessages(sessionId) {
-    return request.get(`/api/chat/${sessionId}`)
+  async getMessages(sessionId, pageSize = 10000) {
+    return request.get(`/api/chat/${sessionId}`, { pageSize })
   },
 
   // 切换消息的对话轮结束标记

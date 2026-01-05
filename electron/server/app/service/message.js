@@ -47,8 +47,8 @@ class MessageService extends Service {
     const { ctx } = this
     const { sessionId, uid, role, content, model, isRoundEnd = false } = data
 
-    // 参数验证
-    if (!uid || !role || !content || !sessionId) {
+    // 参数验证（content 可以为空字符串，用于流式响应开始时创建占位消息）
+    if (!uid || !role || content === undefined || content === null || !sessionId) {
       throw new Error('参数不完整')
     }
 

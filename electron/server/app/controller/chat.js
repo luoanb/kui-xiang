@@ -27,8 +27,8 @@ class ChatController extends Controller {
       const result = await ctx.service.chat.getHistory(
         sessionId,
         uid,
-        page,
-        pageSize,
+        parseInt(page) || 1,
+        parseInt(pageSize) || 10000, // 默认10000，确保获取所有消息
       )
       ctx.body = ctx.helper.success(result)
     } catch (error) {

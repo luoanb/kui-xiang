@@ -236,6 +236,8 @@ class TeamPromptService extends Service {
     // 如果启用了 MCP，自动获取所有正在运行且启用的 MCP 工具
     if (enableMcp) {
       try {
+        console.log('[teamPrompt_js]', '启用 MCP，开始获取正在运行的 MCP 工具');
+        
         ctx.logger.info('[TeamPromptService] 启用 MCP，开始获取正在运行的 MCP 工具')
         
         // 获取所有已安装的 MCP 服务器

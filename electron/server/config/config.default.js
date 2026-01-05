@@ -42,10 +42,12 @@ module.exports = appInfo => {
     allowDebugAtProd: true,
     level: 'DEBUG',
     consoleLevel: 'DEBUG',
-    encoding: 'utf8',
+    encoding: "utf-8",
     when: 'D',
     keepFileExt: true,
     maxFiles: 10,
+    outputJSON: false, // 以可读格式输出，而不是 JSON
+    disableConsoleAfterReady: false, // 确保应用启动后控制台输出不被禁用
   }
 
   // 添加数据库配置

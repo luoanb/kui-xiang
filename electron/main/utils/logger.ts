@@ -10,6 +10,10 @@ log.transports.file.resolvePathFn = variables =>
   path.join(app.getPath('userData'), 'logs', 'eechat-app', variables.fileName)
 log.transports.file.level = 'debug'
 
+// 确保控制台输出启用
+log.transports.console.level = 'debug'
+log.transports.console.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}'
+
 Object.assign(console, log.functions)
 
 // 创建应用范围的日志实例
