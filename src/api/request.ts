@@ -221,6 +221,11 @@ export const chatApi = {
     return request.get(`/api/chat/${sessionId}`)
   },
 
+  // 切换消息的对话轮结束标记
+  async toggleRoundEnd(messageId) {
+    return request.put(`/api/message/${messageId}/toggle-round-end`)
+  },
+
   // 获取会话设置
   async getSettings(sessionId: number) {
     return request.get<{

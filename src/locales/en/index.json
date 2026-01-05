@@ -77,7 +77,11 @@
     "stopVolcanoSpeaking": "Stop Volcano Speaking",
     "speak": "Speak",
     "stopSpeaking": "Stop Speaking",
-    "copyMessage": "Copy Message"
+    "copyMessage": "Copy Message",
+    "markRoundEnd": "Mark Round End",
+    "roundEndMarked": "Round End Marked",
+    "roundEndLabel": "Previous Round Ended",
+    "roundEndTooltip": "AI conversations do not remember previous content"
   },
   "mcp": {
     "title": "MCP Management",

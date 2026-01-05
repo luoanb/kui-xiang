@@ -2,15 +2,18 @@
 import { ref, watch, onBeforeUnmount, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import { Volume2, VolumeX, Copy, Check, Headphones } from 'lucide-vue-next'
+import { Volume2, VolumeX, Copy, Check, Headphones, Minus } from 'lucide-vue-next'
 import { useVolcanoTTS } from '@/composables/useVolcanoTTS'
 import { useSpeechStore } from '@/stores/speech'
-import { ttsApi } from '@/api/request'
+import { ttsApi, chatApi } from '@/api/request'
 
 const props = defineProps<{
   message: string,
-  role: string
+  role: string,
+  messageId?: number
 }>()
+
+const isRoundEnd = defineModel<boolean>('isRoundEnd', { default: false })
 
 onMounted(() => {
   const localVoice = localStorage.getItem('tts-voice')
@@ -24,6 +27,7 @@ const isSpeaking = ref(false)
 const isCopied = ref(false)
 const isVolcanoSpeaking = ref(false)
 const isEdgeTtsSpeaking = ref(false)
+const isToggling = ref(false)
 const speechSynthesis = window.speechSynthesis
 let utterance:any = null
 
@@ -273,6 +277,24 @@ const copyMessage = async () => {
   }
 }
 
+// 切换轮次结束标记
+const toggleRoundEnd = async () => {
+  if (!props.messageId || isToggling.value) return
+  
+  try {
+    isToggling.value = true
+    const result = await chatApi.toggleRoundEnd(props.messageId)
+    if (result && typeof result.is_round_end === 'boolean') {
+      isRoundEnd.value = result.is_round_end
+      console.log('[message_action]', '切换轮次结束标记成功:', isRoundEnd.value)
+    }
+  } catch (err) {
+    console.error('[message_action]', '切换轮次结束标记失败:', err)
+  } finally {
+    isToggling.value = false
+  }
+}
+
 // 当组件卸载时停止朗读
 watch(() => props.message, () => {
   if (isSpeaking.value) {
@@ -347,6 +369,18 @@ onBeforeUnmount(() => {
     >
       <Copy v-if="!isCopied" class="h-4 w-4" />
       <Check v-else class="h-4 w-4 text-green-500" />
+    </Button>
+    <!-- 切换轮次结束按钮（仅AI回答显示） -->
+    <Button 
+      v-if="role === 'assistant' && messageId"
+      variant="outline" 
+      size="icon" 
+      class="h-8 w-8" 
+      @click="toggleRoundEnd"
+      :title="isRoundEnd ? t('chat.roundEndMarked') : t('chat.markRoundEnd')"
+      :disabled="isToggling"
+    >
+      <Minus class="h-4 w-4" :class="isRoundEnd ? 'text-green-500' : ''" />
     </Button>
   </div>
 </template>

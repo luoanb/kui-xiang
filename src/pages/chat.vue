@@ -50,9 +50,11 @@ const route = useRoute()
 const assistantStore = useAssistantStore()
 
 interface Message {
+  id?: number
   role: "system" | "user" | "assistant"
   content: string
   reasoning_content?: string
+  is_round_end?: boolean
 }
 const { t } = useI18n()
 const chatStore = useChatStore()

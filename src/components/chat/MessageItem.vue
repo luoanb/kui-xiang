@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, defineProps, computed, nextTick, onBeforeUnmount, watch } from "vue"
+import { ref, computed, nextTick, onBeforeUnmount, watch } from "vue"
 import { useI18n } from "vue-i18n"
 import { LoaderCircle } from "lucide-vue-next"
 import MessageAction from "./MessageAction.vue"
@@ -21,7 +21,11 @@ const props = defineProps<{
   message: string
   messageReasoning: string
   role: string
+  messageId?: number
 }>()
+
+const isRoundEnd = defineModel<boolean>('isRoundEnd', { default: false })
+
 const { t } = useI18n()
 const renderedHTML = ref("")
 const isThinking = ref(false)
@@ -147,7 +151,21 @@ const processedFormalContent = computed(() => {
         </div>
       </div>
     </div>
-    <div class="invisible group-hover/item:visible"><MessageAction :message="message" :role="role"></MessageAction></div>
+    <div class="invisible group-hover/item:visible">
+      <MessageAction 
+        :message="message" 
+        :role="role"
+        :messageId="messageId"
+        v-model:isRoundEnd="isRoundEnd"
+      />
+    </div>
+    <!-- 如果标记为轮次结束，显示分割线 -->
+    <div v-if="isRoundEnd && role === 'assistant'" class="my-4 relative" :title="t('chat.roundEndTooltip')">
+      <div class="border-t border-gray-300 dark:border-gray-600"></div>
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
+        {{ t('chat.roundEndLabel') }}
+      </div>
+    </div>
   </div>
 </template>
 

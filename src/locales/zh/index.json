@@ -77,7 +77,11 @@
     "stopVolcanoSpeaking": "停止火山TTS朗读",
     "speak": "朗读",
     "stopSpeaking": "停止朗读",
-    "copyMessage": "复制消息"
+    "copyMessage": "复制消息",
+    "markRoundEnd": "标记轮次结束",
+    "roundEndMarked": "已标记轮次结束",
+    "roundEndLabel": "上轮对话结束",
+    "roundEndTooltip": "AI对话不会记忆以前的内容"
   },
   "mcp": {
     "title": "MCP管理",

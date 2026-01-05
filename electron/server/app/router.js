@@ -10,6 +10,16 @@ module.exports = app => {
   router.post('/api/local/chat', controller.chat.sendMessageLocal)
   router.get('/api/chat/:id', controller.chat.history)
   router.post('/api/session/new', controller.chat.createSession)
+
+  // 消息管理接口
+  router.post('/api/message', controller.message.create)
+  router.get('/api/message/:id', controller.message.getById)
+  router.put('/api/message/:id', controller.message.update)
+  router.delete('/api/message/:id', controller.message.delete)
+  router.get('/api/message/session/:sessionId', controller.message.getBySession)
+  router.get('/api/message/session/:sessionId/for-model', controller.message.getBySessionForModel)
+  router.post('/api/message/:id/append', controller.message.append)
+  router.put('/api/message/:id/toggle-round-end', controller.message.toggleRoundEnd)
   router.get('/api/session/list', controller.chat.listSession)
   router.delete('/api/session/:id', controller.chat.removeSession)
   // 对话总结标题

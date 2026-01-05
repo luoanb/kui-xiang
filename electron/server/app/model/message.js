@@ -1,5 +1,5 @@
 module.exports = app => {
-  const { INTEGER, STRING, TEXT, DATE } = app.Sequelize
+  const { INTEGER, STRING, TEXT, DATE, BOOLEAN } = app.Sequelize
 
   const Message = app.model.define(
     'message',
@@ -44,6 +44,12 @@ module.exports = app => {
         type: TEXT,
         allowNull: true,
         comment: '对象名称',
+      },
+      is_round_end: {
+        type: BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: '标记当前对话轮是否结束',
       },
       created_at: {
         type: DATE,

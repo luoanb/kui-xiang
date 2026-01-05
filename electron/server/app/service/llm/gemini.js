@@ -80,42 +80,10 @@ class GeminiService extends BaseLLMService {
         ? model.id.split(model.provider_id + ':').pop()
         : model.id
       /**
-       * 合并相同角色的消息
-       * */
-      const mergedMessages = []
-      if (messages && messages.length > 0) {
-        let currentMessage = { ...messages[0] }
-        
-        if(messages.length > 0 && typeof messages[0].reasoning_content != 'undefined') {
-          delete messages[0].reasoning_content
-        }
-        
-        for (let i = 1; i < messages.length; i++) {
-
-          /**
-           * For Error: 
-           * 400 The reasoning_content is an intermediate result for display purposes only and will not be included in the context for inference. Please remove the reasoning_content from your message to reduce network traffic.
-           */
-          if(typeof messages[i].reasoning_content != 'undefined') {
-            delete messages[i].reasoning_content
-          }
-          /**
-           * 
-          * deepseek 不支持连续相同角色的消息
-          * For Error: 400 deepseek-reasoner does not support successive user or assistant messages (messages[1] and messages[2] in your input). You should interleave the user/assistant messages in the message sequence.
-           */
-          if (messages[i].role === currentMessage.role) {
-            // 如果角色相同，合并内容
-            currentMessage.content += '\n' + messages[i].content
-          } else {
-            // 如果角色不同，添加当前消息并开始新消息
-            mergedMessages.push(currentMessage)
-            currentMessage = { ...messages[i] }
-          }
-        }
-        // 添加最后一条消息
-        mergedMessages.push(currentMessage)
-      }
+       * 使用 MessageService 转换消息格式
+       * 去除 reasoning_content 标签，合并相同角色消息
+       */
+      const mergedMessages = ctx.service.message.toModelMsg(messages)
 
       const systemPrompts = this.ctx.service.prompt.buildSystemPrompt(
         sessionSettings.systemPrompt,

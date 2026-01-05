@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import MessageItem from "@/components/chat/MessageItem.vue"
 
-defineProps<{
-  messages: Array<{ role: string; content: string; reasoning_content?: string }>
+const props = defineProps<{
+  messages: Array<{ 
+    id?: number
+    role: string
+    content: string
+    reasoning_content?: string
+    is_round_end?: boolean
+  }>
 }>()
 </script>
 
@@ -11,11 +17,12 @@ defineProps<{
     <div class="flex-1 leading-8">
       <MessageItem
         v-for="(message, index) in messages"
-        :key="index"
+        :key="message.id || index"
         :message="message.content"
         :messageReasoning="message.reasoning_content || ''"
         :role="message.role"
-        :isLastMessage="index === messages.length - 1"
+        :messageId="message.id"
+        v-model:isRoundEnd="message.is_round_end"
       />
     </div>
     <!-- {{ messages[messages.length - 1].reasoning_content }} -->

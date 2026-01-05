@@ -489,7 +489,7 @@ class ChatService extends Service {
    * @param {string} uid - 用户 ID
    * @param {string} role - 用户角色
    * @param {string} content - 聊天内容
-   * @param {string} id - 消息 ID
+   * @param {string} sessionId - 会话 ID
    * @returns {Promise<void>}
    */
   async saveMsg(uid, role, content, sessionId) {
@@ -510,14 +510,12 @@ class ChatService extends Service {
     }
 
     try {
-      // 创建消息记录
-      const message = await ctx.model.Message.create({
-        session_id: sessionId,
+      // 使用 MessageService 创建消息
+      const message = await ctx.service.message.create({
+        sessionId,
         uid,
         role,
         content,
-        created_at: new Date(),
-        updated_at: new Date(),
       })
 
       return message
@@ -538,20 +536,11 @@ class ChatService extends Service {
       }
 
       // 查找当前会话角色的最新消息
-      const latestMessage = await ctx.model.Message.findOne({
-        where: {
-          session_id: sessionId,
-          role: role,
-        },
-        order: [['created_at', 'DESC']],
-      })
+      const latestMessage = await ctx.service.message.getLatestBySession(sessionId, role)
 
       // 如果找到最新消息，则追加内容
       if (latestMessage) {
-        latestMessage.content += message
-        latestMessage.updated_at = new Date()
-        await latestMessage.save()
-        return latestMessage
+        return await ctx.service.message.append(latestMessage.id, message)
       } else {
         // 如果没有找到，则创建一个新的消息
         const newMessage = await this.saveMsg(
@@ -577,8 +566,6 @@ class ChatService extends Service {
    * @returns
    */
   async getHistory(sessionId, uid, page = 1, pageSize = 20) {
-    // console.log('getHistory', sessionId, uid, page, pageSize)
-
     const { ctx } = this
 
     if (!uid || !sessionId) {
@@ -586,24 +573,20 @@ class ChatService extends Service {
     }
 
     try {
-      const offset = (page - 1) * pageSize
-
-      const { count, rows } = await ctx.model.Message.findAndCountAll({
-        where: {
-          session_id: sessionId,
-          uid: uid,
-        },
-        order: [['created_at', 'ASC']],
-        offset,
-        limit: pageSize,
-      })
-
-      return {
-        total: count,
+      // 使用 MessageService 获取消息列表
+      const result = await ctx.service.message.getBySession(sessionId, {
         page,
         pageSize,
-        data: rows,
+        order: 'ASC',
+      })
+
+      // 如果需要按 uid 过滤，在这里过滤
+      if (uid !== 'default-user') {
+        result.data = result.data.filter(msg => msg.uid === uid)
+        result.total = result.data.length
       }
+
+      return result
     } catch (error) {
       ctx.logger.error('获取历史记录失败:', error)
       throw new Error(ctx.__('chat.get_history_failed') + error.message)
