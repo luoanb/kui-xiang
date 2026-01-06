@@ -308,6 +308,10 @@ export const mcpApi = {
     return request.get('/api/mcp/restartServer') 
   },
   
+  async restartFilesystemServer() {
+    return request.get('/api/mcp/restartFilesystemServer')
+  },
+  
   async fetchReadme(url: string): Promise<string> {
     return request.get<string>('/api/mcp/fetch-readme', { url })
   },

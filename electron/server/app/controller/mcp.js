@@ -13,9 +13,18 @@ class McpController extends Controller {
   }
   async restartServer() {
     const { ctx } = this
-
     try {
       const res = await ctx.service.mcp.restartServer()
+      ctx.body = ctx.helper.success(res)
+    } catch (error) {
+      ctx.body = ctx.helper.error(error.message)
+    }
+  }
+  
+  async restartFilesystemServer() {
+    const { ctx } = this
+    try {
+      const res = await ctx.service.mcp.restartFilesystemServer()
       ctx.body = ctx.helper.success(res)
     } catch (error) {
       ctx.body = ctx.helper.error(error.message)

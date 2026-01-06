@@ -212,6 +212,54 @@ class McpService extends Service {
   }
 
   /**
+   * 重启filesystem MCP服务器
+   */
+  async restartFilesystemServer() {
+    try {
+      this.ctx.logger.info('正在重启filesystem MCP服务器')
+
+      // 停止filesystem服务器
+      if (this.clients.has('filesystem')) {
+        await this.stopMcpServer('filesystem')
+      }
+
+      // 清除filesystem服务器的工具缓存
+      this.clearToolsCache('filesystem')
+
+      // 获取配置并重新连接
+      const config = await this.getConfig()
+      if (config.filesystem) {
+        const result = await this.connectServer('filesystem', config.filesystem)
+        
+        if (result.success) {
+          this.ctx.logger.info('filesystem MCP服务器重启成功')
+          return {
+            success: true,
+            message: 'filesystem MCP服务器重启成功',
+          }
+        } else {
+          this.ctx.logger.error('filesystem MCP服务器重启失败:', result.error)
+          return {
+            success: false,
+            message: `filesystem MCP服务器重启失败: ${result.error}`,
+          }
+        }
+      } else {
+        return {
+          success: false,
+          message: 'filesystem MCP配置不存在',
+        }
+      }
+    } catch (error) {
+      this.ctx.logger.error('重启filesystem MCP服务器时发生错误:', error)
+      return {
+        success: false,
+        message: `重启失败: ${error.message || '未知错误'}`,
+      }
+    }
+  }
+
+  /**
    * 停止所有MCP服务器
    */
   async stopServer() {

@@ -200,5 +200,71 @@ export class Ipc {
         throw new Error(`重启服务器失败: ${error.message}`)
       }
     })
+    
+    // 打开文件夹选择对话框
+    ipcMain.handle('select-folder', async () => {
+      try {
+        const result = await dialog.showOpenDialog({
+          properties: ['openDirectory', 'createDirectory'],
+          title: '选择项目文件夹',
+        })
+        
+        if (result.canceled || result.filePaths.length === 0) {
+          return null
+        }
+        
+        const folderPath = result.filePaths[0]
+        const folderName = path.basename(folderPath)
+        
+        return {
+          path: folderPath,
+          name: folderName,
+          lastOpened: Date.now(),
+        }
+      } catch (error) {
+        console.error('打开文件夹选择对话框失败:', error)
+        throw new Error(`打开文件夹失败: ${error.message}`)
+      }
+    })
+    
+    // 更新filesystem MCP的路径
+    ipcMain.handle('update-filesystem-path', async (_, folderPath: string) => {
+      try {
+        const configDir = path.join(app.getPath('userData'), 'config')
+        const configFile = path.join(configDir, 'mcp.config.json')
+        
+        // 确保配置目录存在
+        if (!fs.existsSync(configDir)) {
+          fs.mkdirSync(configDir, { recursive: true })
+        }
+        
+        // 读取配置文件
+        let config = { mcpServers: {} }
+        if (fs.existsSync(configFile)) {
+          const content = fs.readFileSync(configFile, 'utf8')
+          config = JSON.parse(content)
+        }
+        
+        // 更新filesystem的路径
+        if (config.mcpServers && config.mcpServers.filesystem) {
+          config.mcpServers.filesystem.args = ['-y', '@modelcontextprotocol/server-filesystem', folderPath]
+          
+          // 保存配置
+          fs.writeFileSync(configFile, JSON.stringify(config, null, 2), 'utf8')
+          
+          // 通知MCP服务重启filesystem服务器
+          if (global.eggApp && global.eggApp.messenger) {
+            global.eggApp.messenger.sendToApp('restart-filesystem-mcp', folderPath)
+          }
+          
+          return { success: true, path: folderPath }
+        } else {
+          throw new Error('filesystem MCP配置不存在')
+        }
+      } catch (error) {
+        console.error('更新filesystem路径失败:', error)
+        throw new Error(`更新路径失败: ${error.message}`)
+      }
+    })
   }
 }

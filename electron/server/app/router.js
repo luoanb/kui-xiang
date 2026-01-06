@@ -93,6 +93,7 @@ module.exports = app => {
   // mcp
   router.get('/api/mcp/listAllTools', controller.mcp.listAllTools)
   router.get('/api/mcp/restartServer', controller.mcp.restartServer)
+  router.get('/api/mcp/restartFilesystemServer', controller.mcp.restartFilesystemServer)
   // MCP相关接口
   router.get('/api/mcp/fetch-readme', controller.mcp.fetchReadme)
   router.post('/api/mcp/analyze-readme', controller.mcp.analyzeReadme) // AI分析README
