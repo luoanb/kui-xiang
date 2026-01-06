@@ -167,6 +167,7 @@ export const chatApi = {
     },
     signal?: AbortSignal, // AbortSignal用于取消请求
     onStreamEnd?: () => void, // 流式响应结束的回调
+    onMessageId?: (messageId: number) => void, // 消息ID回调（可选）
   ) {
 
     const requestBody: any = { model, messages, sessionId }
@@ -205,7 +206,7 @@ export const chatApi = {
         fetchOptions.signal = signal
       }
       const response = await fetch(API_BASE_URL + '/api/local/chat', fetchOptions)
-      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd)
+      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd, onMessageId)
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('[request_ts]', '请求已取消')
@@ -425,6 +426,7 @@ export const llmApi = {
     },
     signal?: AbortSignal, // AbortSignal用于取消请求
     onStreamEnd?: () => void, // 流式响应结束的回调
+    onMessageId?: (messageId: number) => void, // 消息ID回调（可选）
   ) {
     const provider = model.provider_id
 
@@ -463,7 +465,7 @@ export const llmApi = {
         fetchOptions.signal = signal
       }
       const response = await fetch(API_BASE_URL + '/api/llm/chat', fetchOptions)
-      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd)
+      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd, onMessageId)
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('[request_ts]', '请求已取消')
@@ -475,7 +477,7 @@ export const llmApi = {
   },
 }
 
-const handleStream = async (response, onProgress, onProgressReasoning, signal?: AbortSignal, onStreamEnd?: () => void) => {
+const handleStream = async (response, onProgress, onProgressReasoning, signal?: AbortSignal, onStreamEnd?: () => void, onMessageId?: (messageId: number) => void) => {
   const reader = response.body?.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -517,6 +519,12 @@ const handleStream = async (response, onProgress, onProgressReasoning, signal?: 
               // debugger
             }
             console.log('[request_ts]', 'data:', data);
+            
+            // 处理消息ID（可选）
+            if (data.message_id && onMessageId) {
+              onMessageId(data.message_id)
+            }
+            
             const reasoning_content = data.choices[0]?.delta?.reasoning_content || ''
             const content = data.choices[0]?.delta?.content || ''
 
@@ -778,6 +786,7 @@ export const teamPromptApi = {
     enableMcp?: boolean, // MCP 开关，如果为 true，后端自动获取所有正在运行的 MCP 工具
     signal?: AbortSignal, // AbortSignal用于取消请求
     onStreamEnd?: () => void, // 流式响应结束的回调
+    onMessageId?: (messageId: number) => void, // 消息ID回调（可选）
   ) {
     const provider = model.provider_id
 
@@ -812,7 +821,7 @@ export const teamPromptApi = {
         fetchOptions.signal = signal
       }
       const response = await fetch(API_BASE_URL + '/api/team/chat', fetchOptions)
-      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd)
+      await handleStream(response, onProgress, onProgressReasoning, signal, onStreamEnd, onMessageId)
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('[request_ts]', '请求已取消')

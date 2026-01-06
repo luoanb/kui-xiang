@@ -340,32 +340,28 @@ class MessageService extends Service {
         order: [['created_at', order.toUpperCase()]],
       })
 
-      // 从最新消息往前查找，找到第一条 is_round_end = true 的消息
-      let startIndex = 0
-      for (let i = allMessages.length - 1; i >= 0; i--) {
-        if (allMessages[i].is_round_end) {
-          startIndex = i
-          break
-        }
-      }
+      console.log('[message_service] getBySessionForModel 查询到的所有消息:', {
+        total: allMessages.length,
+        messages: allMessages.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content?.substring(0, 30) || '(empty)',
+          isRoundEnd: msg.is_round_end
+        }))
+      })
 
-      // 返回从该消息开始到最新的所有消息
-      const filteredMessages = allMessages.slice(startIndex)
-
-      // 应用分页（如果需要）
+      // 应用分页
       const offset = (page - 1) * pageSize
-      const paginatedMessages = filteredMessages.slice(offset, offset + pageSize)
+      const paginatedMessages = allMessages.slice(offset, offset + pageSize)
 
-      console.log('[message_service]', '获取模型消息:', {
+      console.log('[message_service] 获取模型消息:', {
         sessionId,
         total: allMessages.length,
-        filtered: filteredMessages.length,
         returned: paginatedMessages.length,
-        startIndex,
       })
 
       return {
-        total: filteredMessages.length,
+        total: allMessages.length,
         page,
         pageSize,
         data: paginatedMessages,
@@ -416,12 +412,52 @@ class MessageService extends Service {
    * @returns {Array} 转换后的消息数组 { role, content }[]
    */
   toModelMsg(messages) {
+    console.log('[message_service] toModelMsg 输入消息数量:', messages?.length)
+    
     if (!messages || messages.length === 0) {
+      console.log('[message_service] toModelMsg 消息为空，返回空数组')
       return []
     }
 
+    console.log('[message_service] toModelMsg 原始消息摘要:', messages.map(msg => ({
+      id: msg.id,
+      role: msg.role,
+      content: msg.content?.substring(0, 30) || '(empty)',
+      isRoundEnd: msg.is_round_end
+    })))
+
+    // 从最新消息往前查找，找到第一条 is_round_end = true 的消息
+    let startIndex = 0
+    for (let i = messages.length - 1; i >= 0; i--) {
+      console.log('[message_service] toModelMsg 检查消息', i, ':', {
+        id: messages[i].id,
+        role: messages[i].role,
+        isRoundEnd: messages[i].is_round_end,
+        content: messages[i].content?.substring(0, 30) || '(empty)'
+      })
+      if (messages[i].is_round_end) {
+        startIndex = i + 1  // 从下一条开始，不包含当前这条
+        console.log('[message_service] toModelMsg 找到 is_round_end=true 的消息，从下一条开始，索引:', startIndex)
+        break
+      }
+    }
+
+    // 截取从该消息开始到最新的所有消息
+    const filteredMessages = messages.slice(startIndex)
+
+    console.log('[message_service] toModelMsg 截取后的消息:', {
+      startIndex,
+      filteredCount: filteredMessages.length,
+      filteredMessages: filteredMessages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content?.substring(0, 30) || '(empty)',
+        isRoundEnd: msg.is_round_end
+      }))
+    })
+
     const mergedMessages = []
-    let currentMessage = { ...messages[0] }
+    let currentMessage = { ...filteredMessages[0] }
 
     // 去除第一条消息的 reasoning_content
     if (typeof currentMessage.reasoning_content !== 'undefined') {
@@ -430,14 +466,13 @@ class MessageService extends Service {
 
     // 去除 content 中的 reasoning_content 标签
     if (currentMessage.content) {
-      // 去除 <think>...</think> 标签
       currentMessage.content = currentMessage.content
-        .replace(/<think>[\s\S]*?<\/redacted_reasoning>/g, '')
+        .replace(/<redacted_reasoning>[\s\S]*?<\/redacted_reasoning>/g, '')
         .trim()
     }
 
-    for (let i = 1; i < messages.length; i++) {
-      const msg = { ...messages[i] }
+    for (let i = 1; i < filteredMessages.length; i++) {
+      const msg = { ...filteredMessages[i] }
 
       // 去除 reasoning_content 字段
       if (typeof msg.reasoning_content !== 'undefined') {
@@ -447,7 +482,7 @@ class MessageService extends Service {
       // 去除 content 中的 reasoning_content 标签
       if (msg.content) {
         msg.content = msg.content
-          .replace(/<think>[\s\S]*?<\/redacted_reasoning>/g, '')
+          .replace(/<redacted_reasoning>[\s\S]*?<\/redacted_reasoning>/g, '')
           .trim()
       }
 
@@ -470,9 +505,14 @@ class MessageService extends Service {
       content: currentMessage.content,
     })
 
-    console.log('[message_service]', '消息格式转换:', {
+    console.log('[message_service] toModelMsg 转换结果:', {
       original: messages.length,
+      filtered: filteredMessages.length,
       merged: mergedMessages.length,
+      mergedSummary: mergedMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content?.substring(0, 30) || '(empty)'
+      }))
     })
 
     return mergedMessages
@@ -480,4 +520,3 @@ class MessageService extends Service {
 }
 
 module.exports = MessageService
-

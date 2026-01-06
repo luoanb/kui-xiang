@@ -159,6 +159,20 @@ async function startEggServer(pathArg): Promise<void> {
       ? path.join(__dirname, '../../electron/server')
       : path.join(process.resourcesPath, 'app.asar.unpacked')
     
+    // Windows 下设置控制台输出编码
+    if (process.platform === 'win32') {
+      try {
+        if (process.stdout && typeof process.stdout.write === 'function') {
+          process.stdout.setEncoding('utf8')
+        }
+        if (process.stderr && typeof process.stderr.write === 'function') {
+          process.stderr.setEncoding('utf8')
+        }
+      } catch (error) {
+        // 忽略错误
+      }
+    }
+    
     // 获取系统代理设置
     try {
       // 使用 Electron 的 session API 获取系统代理

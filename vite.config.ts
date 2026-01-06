@@ -77,7 +77,7 @@ export default defineConfig(({ command }) => {
                         'dist-electron/server',
                       )
                       
-                      console.log('[build] 复制 server 目录:', srcDir, '->', destDir)
+                      // console.log('[build] 复制 server 目录:', srcDir, '->', destDir)
                       
                       fs.cpSync(srcDir, destDir, {
                         recursive: true,
@@ -116,11 +116,11 @@ export default defineConfig(({ command }) => {
                       ]
                       
                       for (const file of criticalFiles) {
-                        if (fs.existsSync(file)) {
-                          console.log('[build] ✓ 关键文件已复制:', file)
-                        } else {
-                          console.warn('[build] ✗ 关键文件缺失:', file)
-                        }
+                        // if (fs.existsSync(file)) {
+                        //   console.log('[build] ✓ 关键文件已复制:', file)
+                        // } else {
+                        //   console.warn('[build] ✗ 关键文件缺失:', file)
+                        // }
                       }
                     },
                   },

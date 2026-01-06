@@ -57,6 +57,8 @@ class ChatService extends Service {
         messages,
         sessionId,
         model,
+        null,
+        null,
       )
     } catch (error) {
       ctx.logger.error('Chat service error:', error)
@@ -106,6 +108,18 @@ class ChatService extends Service {
 
     try {
       const toolCallMerger = new ToolCallMerger()
+      
+      if (msgSaved) {
+        ctx.res.write(JSON.stringify({
+          message_id: msgSaved.id,
+          choices: [{
+            delta: { content: '' },
+            finish_reason: null,
+            index: 0,
+          }],
+        }) + '\n')
+      }
+      
       for await (const chunk of stream) {
         // 检查响应是否已结束（中断场景）
         if (ctx.res.writableEnded) {

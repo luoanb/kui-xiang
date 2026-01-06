@@ -154,6 +154,11 @@ const sendMsgLocalOllama = async (model: LLMModel, msg: string) => {
         // 流式响应结束的回调
         isStreaming.value = false;
       },
+      (messageId: number) => {
+        // 接收消息ID并更新消息对象
+        const lastMessage = chatHistory.value[chatHistory.value.length - 1];
+        lastMessage.id = messageId;
+      },
     );
   } catch (error: any) {
     console.error("[team_vue] Error during chat:", error);
@@ -260,6 +265,11 @@ const sendMsgLlmApi = async (model: LLMModel, msg: string) => {
             console.error('[team_vue]', '更新标题失败:', error);
           }
         }
+      },
+      (messageId: number) => {
+        // 接收消息ID并更新消息对象
+        const lastMessage = chatHistory.value[chatHistory.value.length - 1];
+        lastMessage.id = messageId;
       },
     );
   } catch (error: any) {
