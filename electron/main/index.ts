@@ -194,9 +194,10 @@ async function startEggServer(pathArg): Promise<void> {
         baseDir: baseDir,
         // mode: 'single',
         // typescript: false,
-        env: process.env.NODE_ENV // Pass the NODE_ENV string instead of the entire process.env object
+        env: process.env.NODE_ENV // Pass NODE_ENV string instead of entire process.env object
       })
       appServer.listen(7002)
+      global.eggApp = appServer
       log.info(`Server started on ${7002}`)
       resolve()
     } catch (error) {

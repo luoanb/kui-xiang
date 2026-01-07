@@ -132,6 +132,18 @@ class AppBootHook {
 
           if (ctx && ctx.service && ctx.service.mcp) {
             await ctx.service.mcp.ensureInitialized()
+            console.log("[MCP] filesystem初始化");
+            if (this.app.messenger) {
+              this.app.messenger.on('restart-filesystem-mcp', async (folderPath) => {
+                this.app.logger.info('[MCP] 收到重启 filesystem MCP 的请求，路径:', folderPath)
+                try {
+                  const result = await ctx.service.mcp.restartFilesystemServer()
+                  this.app.logger.info('[MCP] filesystem MCP 重启结果:', result)
+                } catch (error) {
+                  this.app.logger.error('[MCP] 重启 filesystem MCP 失败:', error)
+                }
+              })
+            }
             this.app.logger.info('[MCP] didReady (via ctx) 初始化完成')
           } else {
             this.app.logger.info('[MCP] didReady (via ctx) 未找到 mcp service，跳过')
@@ -149,22 +161,10 @@ class AppBootHook {
 
   async serverDidReady() {
     // http / https server 已启动
-    try {
-      if (this.app && this.app.service && this.app.service.mcp) {
-        this.app.logger.info('[MCP] 在 serverDidReady 中触发初始化')
-        // 确保 MCP 服务尽早初始化并根据配置启动已启用的服务器
-        try {
-          await this.app.service.mcp.ensureInitialized()
-          this.app.logger.info('[MCP] 初始化完成')
-        } catch (err) {
-          this.app.logger.error('[MCP] 初始化失败:', err)
-        }
-      } else {
-        this.app.logger.info('[MCP] 未找到 mcp service，跳过初始化')
-      }
-    } catch (error) {
-      this.app.logger.error('[MCP] 在 serverDidReady 执行初始化时发生错误:', error)
-    }
+  }
+
+  async beforeClose() {
+    this.app.logger.info('[AppBootHook] 应用即将关闭')
   }
 }
 

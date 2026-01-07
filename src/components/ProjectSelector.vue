@@ -42,7 +42,6 @@ const handleOpenFolder = async () => {
       
       try {
         await window.ipcRenderer.invoke('update-filesystem-path', result.path)
-        await mcpApi.restartFilesystemServer()
       } catch (error) {
         console.error('更新filesystem路径失败:', error)
       }
@@ -56,13 +55,7 @@ const handleSelectFromHistory = (folder: any) => {
   projectStore.selectFolderFromHistory(folder)
   
   if (window.ipcRenderer) {
-    window.ipcRenderer.invoke('update-filesystem-path', folder.path).then(async () => {
-      try {
-        await mcpApi.restartFilesystemServer()
-      } catch (error) {
-        console.error('重启filesystem服务器失败:', error)
-      }
-    }).catch(error => {
+    window.ipcRenderer.invoke('update-filesystem-path', folder.path).catch(error => {
       console.error('更新filesystem路径失败:', error)
     })
   }
