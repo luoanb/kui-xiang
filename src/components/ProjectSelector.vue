@@ -45,18 +45,29 @@ const handleOpenFolder = async () => {
       } catch (error) {
         console.error('更新filesystem路径失败:', error)
       }
+      
+      try {
+        await mcpApi.post('/api/project/set-path', { path: result.path })
+        console.log('项目路径已设置:', result.path)
+      } catch (error) {
+        console.error('设置项目路径失败:', error)
+      }
     }
   } catch (error) {
     console.error('打开文件夹失败:', error)
   }
 }
 
-const handleSelectFromHistory = (folder: any) => {
+const handleSelectFromHistory = async (folder: any) => {
   projectStore.selectFolderFromHistory(folder)
   
   if (window.ipcRenderer) {
     window.ipcRenderer.invoke('update-filesystem-path', folder.path).catch(error => {
       console.error('更新filesystem路径失败:', error)
+    })
+    
+    mcpApi.post('/api/project/set-path', { path: folder.path }).catch(error => {
+      console.error('设置项目路径失败:', error)
     })
   }
 }

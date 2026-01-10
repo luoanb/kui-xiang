@@ -150,6 +150,7 @@ async function createWindow() {
 }
 
 let appServer: any = null
+let eggServerProcess: any = null
 const egg = require('egg')
 async function startEggServer(pathArg): Promise<void> {
   return new Promise<void>(async (resolve, reject) => {
@@ -190,16 +191,68 @@ async function startEggServer(pathArg): Promise<void> {
         }
       }
       
-      appServer = await egg.start({
-        baseDir: baseDir,
-        // mode: 'single',
-        // typescript: false,
-        env: process.env.NODE_ENV // Pass NODE_ENV string instead of entire process.env object
-      })
-      appServer.listen(7002)
-      global.eggApp = appServer
-      log.info(`Server started on ${7002}`)
-      resolve()
+      if (isDev) {
+        // 开发模式：使用 egg-bin dev 启动，支持热更新
+        log.info('使用 egg-bin dev 启动开发服务器（支持热更新）')
+        log.info('baseDir:', baseDir)
+        
+        eggServerProcess = spawn('npx', ['egg-bin', 'dev', '--baseDir', baseDir], {
+          cwd: baseDir,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: true,
+          env: {
+            ...process.env,
+            NODE_ENV: 'development',
+            EGG_SERVER_ENV: 'local'
+          }
+        })
+        
+        // 捕获 stdout
+        eggServerProcess.stdout.on('data', (data) => {
+          const output = data.toString()
+          console.log('[egg-bin dev]', output)
+          log.info('[egg-bin dev]', output.trim())
+        })
+        
+        // 捕获 stderr
+        eggServerProcess.stderr.on('data', (data) => {
+          const output = data.toString()
+          console.error('[egg-bin dev error]', output)
+          log.error('[egg-bin dev error]', output.trim())
+        })
+        
+        eggServerProcess.on('error', (error) => {
+          log.error('Failed to start egg-bin dev:', error)
+          console.error('Failed to start egg-bin dev:', error)
+          reject(error)
+        })
+        
+        eggServerProcess.on('exit', (code, signal) => {
+          log.info(`egg-bin dev exited with code ${code}, signal ${signal}`)
+          console.log(`egg-bin dev exited with code ${code}, signal ${signal}`)
+          if (code !== 0 && code !== null) {
+            log.warn('egg-bin dev 进程异常退出')
+          }
+        })
+        
+        // 等待服务器启动（给足够时间让 egg-bin dev 启动）
+        setTimeout(() => {
+          log.info('开发服务器启动完成')
+          resolve()
+        }, 5000)
+      } else {
+        // 生产模式：使用 egg.start 启动
+        appServer = await egg.start({
+          baseDir: baseDir,
+          // mode: 'single',
+          // typescript: false,
+          env: process.env.NODE_ENV // Pass NODE_ENV string instead of entire process.env object
+        })
+        appServer.listen(7002)
+        global.eggApp = appServer
+        log.info(`Server started on ${7002}`)
+        resolve()
+      }
     } catch (error) {
       reject(error)
     }
@@ -208,10 +261,39 @@ async function startEggServer(pathArg): Promise<void> {
 async function stopEggServer(): Promise<void> {
   return new Promise<void>(async (resolve, reject) => {
     try {
-      console.log('[index_ts]', appServer)
-
-      await appServer.close()
-      console.log('[index_ts]', `Server stoped`)
+      const isDev = process.env.NODE_ENV !== 'production'
+      
+      if (isDev && eggServerProcess) {
+        // 开发模式：停止 egg-bin dev 进程
+        log.info('正在停止 egg-bin dev 进程...')
+        eggServerProcess.kill('SIGTERM')
+        
+        // 等待进程退出
+        eggServerProcess.on('exit', () => {
+          log.info('egg-bin dev 进程已停止')
+          eggServerProcess = null
+          resolve()
+        })
+        
+        // 如果进程在 5 秒内没有退出，强制杀死
+        setTimeout(() => {
+          if (eggServerProcess) {
+            log.warn('egg-bin dev 进程未正常退出，强制停止')
+            eggServerProcess.kill('SIGKILL')
+            eggServerProcess = null
+            resolve()
+          }
+        }, 5000)
+      } else if (appServer) {
+        // 生产模式：停止 egg.start 启动的服务器
+        console.log('[index_ts]', appServer)
+        await appServer.close()
+        console.log('[index_ts]', `Server stopped`)
+        resolve()
+      } else {
+        log.warn('没有运行中的服务器')
+        resolve()
+      }
     } catch (error) {
       log.error(error)
       reject(error)
@@ -362,7 +444,10 @@ app.on('window-all-closed', () => {
   console.log('[index_ts]', 'window-all-closed')
   // 注销所有全局快捷键
   globalShortcut.unregisterAll()
-  appServer.close()
+  // 停止 EggJS 服务器
+  stopEggServer().catch(err => {
+    log.error('停止服务器失败:', err)
+  })
   app.quit()
 })
 

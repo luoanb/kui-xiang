@@ -94,6 +94,11 @@ module.exports = app => {
   router.get('/api/mcp/listAllTools', controller.mcp.listAllTools)
   router.get('/api/mcp/restartServer', controller.mcp.restartServer)
   router.get('/api/mcp/restartFilesystemServer', controller.mcp.restartFilesystemServer)
+  router.get('/api/mcp/internal-tool-groups', controller.mcp.getInternalToolGroups)
+  // project
+  router.post('/api/project/set-path', controller.project.setProjectPath)
+  router.get('/api/project/get-path', controller.project.getProjectPath)
+  router.post('/api/project/validate-path', controller.project.validatePath)
   // MCP相关接口
   router.get('/api/mcp/fetch-readme', controller.mcp.fetchReadme)
   router.post('/api/mcp/analyze-readme', controller.mcp.analyzeReadme) // AI分析README

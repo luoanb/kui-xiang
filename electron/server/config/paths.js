@@ -30,4 +30,5 @@ module.exports = {
   binPath: path.join(getAppDataPath(), 'bin'),
   configPath: path.join(getAppDataPath(), 'config'),
   tmpPath: path.join(getAppDataPath(), 'tmp'),
+  projectPath: path.join(getAppDataPath(), 'project'), // 项目路径配置
 }

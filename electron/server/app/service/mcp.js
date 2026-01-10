@@ -11,6 +11,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const paths = require('../../config/paths')
+const InternalToolLoader = require('./internal-tools')
 
 // 创建全局缓存对象
 const GLOBAL_CACHE = {
@@ -20,6 +21,9 @@ const GLOBAL_CACHE = {
   clients: new Map(), // 添加全局客户端缓存
   initialized: false, // 添加全局初始化状态
   cacheVersion: 1, // 添加缓存版本号，用于客户端同步
+  internalTools: new Map(), // 内部工具注册表
+  internalToolsInitialized: false, // 内部工具初始化状态
+  internalToolLoader: null, // 内部工具加载器实例
 }
 
 class McpService extends Service {
@@ -31,6 +35,9 @@ class McpService extends Service {
     this.CACHE_TTL = GLOBAL_CACHE.CACHE_TTL
     this.clients = GLOBAL_CACHE.clients
     this.initialized = GLOBAL_CACHE.initialized
+    this.internalTools = GLOBAL_CACHE.internalTools
+    this.internalToolsInitialized = GLOBAL_CACHE.internalToolsInitialized
+    this.internalToolLoader = GLOBAL_CACHE.internalToolLoader
     // 直接输出到 stdout，便于在 Electron 主进程控制台观察
     try {
       console.log('[MCP] McpService constructed; initialized=', this.initialized)
@@ -51,6 +58,12 @@ class McpService extends Service {
     } else {
       // this.ctx.logger.info('MCP服务已初始化，跳过初始化过程')
     }
+    // 初始化内部工具
+    if (!this.internalToolsInitialized) {
+      await this.initInternalTools()
+      GLOBAL_CACHE.internalToolsInitialized = true
+      this.internalToolsInitialized = true
+    }
   }
 
   async initByConfig() {
@@ -66,6 +79,78 @@ class McpService extends Service {
         continue
       }
       await this.connectServer(key, serverConfig)
+    }
+  }
+
+  /**
+   * 初始化内部工具
+   */
+  async initInternalTools() {
+    this.ctx.logger.info('初始化内部工具系统')
+
+    // 创建内部工具加载器
+    if (!GLOBAL_CACHE.internalToolLoader) {
+      GLOBAL_CACHE.internalToolLoader = new InternalToolLoader(this.ctx)
+      this.internalToolLoader = GLOBAL_CACHE.internalToolLoader
+    }
+
+    // 加载所有内部工具
+    const tools = this.internalToolLoader.loadAllTools()
+
+    // 将加载的工具保存到全局缓存
+    for (const [name, tool] of tools.entries()) {
+      GLOBAL_CACHE.internalTools.set(name, tool)
+    }
+
+    GLOBAL_CACHE.internalToolsInitialized = true
+    this.internalToolsInitialized = true
+
+    this.ctx.logger.info(`内部工具系统初始化完成，共注册 ${tools.size} 个工具`)
+  }
+
+  /**
+   * 获取内部工具列表
+   * @returns {Array} 内部工具列表
+   */
+  getInternalTools() {
+    if (!this.internalToolLoader) {
+      this.ctx.logger.warn('[MCP] 内部工具加载器未初始化，返回空列表')
+      return []
+    }
+    return this.internalToolLoader.getTools()
+  }
+
+  /**
+   * 获取内部工具分组
+   * @returns {Object} 分组映射表 { groupName: [toolNames] }
+   */
+  getInternalToolGroups() {
+    if (!this.internalToolLoader) {
+      this.ctx.logger.warn('[MCP] 内部工具加载器未初始化，返回空分组')
+      return {}
+    }
+    return this.internalToolLoader.groups
+  }
+
+  /**
+   * 调用内部工具
+   * @param {string} toolName 工具名称
+   * @param {Object} args 工具参数
+   * @returns {Promise<Object>} 工具执行结果
+   */
+  async callInternalTool(toolName, args) {
+    if (!this.internalToolLoader) {
+      throw new Error('内部工具加载器未初始化')
+    }
+
+    try {
+      this.ctx.logger.info(`调用内部工具: ${toolName}`, args)
+      const result = await this.internalToolLoader.callTool(toolName, args)
+      this.ctx.logger.info(`内部工具 ${toolName} 执行成功`)
+      return result
+    } catch (error) {
+      this.ctx.logger.error(`内部工具 ${toolName} 执行失败:`, error)
+      throw error
     }
   }
 
@@ -332,6 +417,11 @@ class McpService extends Service {
     await this.ensureInitialized()
     const tools = []
 
+    // 获取内部工具
+    const internalTools = this.getInternalTools()
+    tools.push(...internalTools)
+
+    // 获取 MCP 工具
     for (const key of this.clients.keys()) {
       const serverTools = await this.getTool(key)
       tools.push(...serverTools.tools)
@@ -412,6 +502,13 @@ class McpService extends Service {
   async callTool(serverKey, toolName, args) {
     console.log('[mcp_js]', 'callTool', serverKey, toolName, args)
     await this.ensureInitialized()
+
+    // 判断是否为内部工具
+    if (toolName.startsWith('internal_')) {
+      return await this.callInternalTool(toolName, args)
+    }
+
+    // MCP 工具调用
     const client = this.clients.get(serverKey)
     if (!client) {
       throw new Error(`MCP服务器 ${serverKey} 不存在`)
@@ -1572,6 +1669,34 @@ ${readmeContent}
       ctx.logger.error('[MCP] AI 分析 README 失败:', error)
       throw error
     }
+  }
+
+  /**
+   * 统一工具调用接口
+   * @param {string} toolName 工具名称（可以是内部工具或 MCP 工具）
+   * @param {Object} args 工具参数
+   * @returns {Promise<Object>} 工具执行结果
+   */
+  async callToolUnified(toolName, args) {
+    await this.ensureInitialized()
+
+    // 判断是否为内部工具
+    if (toolName.startsWith('internal_')) {
+      return await this.callInternalTool(toolName, args)
+    }
+
+    // MCP 工具：从工具名称中提取服务器键和原始工具名
+    // 格式：mcp_{serverKey}_{originalName}
+    if (toolName.startsWith('mcp_')) {
+      const parts = toolName.split('_')
+      if (parts.length >= 3) {
+        const serverKey = parts[1]
+        const originalName = parts.slice(2).join('_')
+        return await this.callTool(serverKey, originalName, args)
+      }
+    }
+
+    throw new Error(`未知的工具: ${toolName}`)
   }
 }
 

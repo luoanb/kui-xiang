@@ -5,9 +5,46 @@ class McpController extends Controller {
     const { ctx } = this
 
     try {
-      const res = await ctx.service.mcp.listAllTools()
+      // 获取所有已安装的 MCP 服务器
+      const installedServers = await ctx.service.mcp.getInstalledServers()
+      
+      // 过滤出正在运行且启用的服务器
+      const runningServers = installedServers.filter(server => {
+        const isRunning = server.status === 'running'
+        const isEnabled = server.config?.enabled !== false
+        return isRunning && isEnabled
+      })
+
+      ctx.logger.info('[McpController] 正在运行的 MCP 服务器:', runningServers.map(s => s.key))
+
+      // 获取所有正在运行的服务器的工具列表
+      const allMcpTools = []
+      for (const server of runningServers) {
+        try {
+          const serverTools = await ctx.service.mcp.getTool(server.key)
+          if (serverTools && serverTools.tools && serverTools.tools.length > 0) {
+            allMcpTools.push(...serverTools.tools)
+            ctx.logger.info(`[McpController] 从服务器 ${server.key} 获取到 ${serverTools.tools.length} 个工具`)
+          }
+        } catch (error) {
+          ctx.logger.error(`[McpController] 获取服务器 ${server.key} 的工具失败:`, error)
+        }
+      }
+
+      // 添加内部工具
+      const internalTools = ctx.service.mcp.getInternalTools()
+      allMcpTools.push(...internalTools)
+
+      ctx.logger.info(`[McpController] 总共获取到 ${allMcpTools.length} 个工具 (MCP: ${allMcpTools.length - internalTools.length}, 内部: ${internalTools.length})`)
+
+      const res = {
+        tools: allMcpTools,
+        cacheVersion: ctx.service.mcp.getCacheVersion()
+      }
+      
       ctx.body = ctx.helper.success(res)
     } catch (error) {
+      ctx.logger.error('[McpController] 获取工具列表失败:', error)
       ctx.body = ctx.helper.error(error.message)
     }
   }
@@ -27,6 +64,19 @@ class McpController extends Controller {
       const res = await ctx.service.mcp.restartFilesystemServer()
       ctx.body = ctx.helper.success(res)
     } catch (error) {
+      ctx.body = ctx.helper.error(error.message)
+    }
+  }
+
+  // 获取内部工具分组
+  async getInternalToolGroups() {
+    const { ctx } = this
+    try {
+      const groups = ctx.service.mcp.getInternalToolGroups()
+      ctx.logger.info('[McpController] 内部工具分组:', Object.keys(groups))
+      ctx.body = ctx.helper.success(groups)
+    } catch (error) {
+      ctx.logger.error('[McpController] 获取内部工具分组失败:', error)
       ctx.body = ctx.helper.error(error.message)
     }
   }

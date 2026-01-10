@@ -238,6 +238,9 @@ class TeamPromptService extends Service {
       try {
         console.log('[teamPrompt_js]', '启用 MCP，开始获取正在运行的 MCP 工具');
         
+        // 确保 MCP 服务已初始化（包括内部工具）
+        await ctx.service.mcp.ensureInitialized()
+        
         ctx.logger.info('[TeamPromptService] 启用 MCP，开始获取正在运行的 MCP 工具')
         
         // 获取所有已安装的 MCP 服务器
@@ -267,11 +270,16 @@ class TeamPromptService extends Service {
           }
         }
 
+        // 添加内部工具
+        const internalTools = ctx.service.mcp.getInternalTools()
+        allTools.push(...internalTools)
+        ctx.logger.info(`[TeamPromptService] 添加了 ${internalTools.length} 个内部工具`)
+
         if (allTools.length > 0) {
           tools = allTools
-          ctx.logger.info(`[TeamPromptService] 总共获取到 ${allTools.length} 个 MCP 工具`)
+          ctx.logger.info(`[TeamPromptService] 总共获取到 ${allTools.length} 个工具 (MCP外部: ${allTools.length - internalTools.length}, 内部: ${internalTools.length})`)
         } else {
-          ctx.logger.info('[TeamPromptService] 未找到可用的 MCP 工具')
+          ctx.logger.info('[TeamPromptService] 未找到可用的工具')
         }
       } catch (error) {
         ctx.logger.error('[TeamPromptService] 获取 MCP 工具失败:', error)

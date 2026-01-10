@@ -48,6 +48,7 @@ module.exports = appInfo => {
     maxFiles: 10,
     outputJSON: false, // 以可读格式输出，而不是 JSON
     disableConsoleAfterReady: false, // 确保应用启动后控制台输出不被禁用
+    disableFile: true, // 禁用文件日志写入
   }
 
   // 添加数据库配置
