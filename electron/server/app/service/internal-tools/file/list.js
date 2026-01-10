@@ -26,13 +26,26 @@ const listTool = {
     
     try {
       const projectService = ctx.service.project
-      const absoluteDirPath = path.resolve(dirPath)
-      
       const projectPath = projectService.getProjectPath()
+      
+      let absoluteDirPath
       
       if (projectPath) {
         const absoluteProjectPath = path.resolve(projectPath)
+        
+        if (path.isAbsolute(dirPath)) {
+          absoluteDirPath = path.resolve(dirPath)
+        } else {
+          absoluteDirPath = path.resolve(absoluteProjectPath, dirPath)
+        }
+        
         const relativePath = path.relative(absoluteProjectPath, absoluteDirPath)
+        
+        ctx.logger.info(`[链路起点] 用户选择的项目路径: ${projectPath}`)
+        ctx.logger.info(`[链路起点] 工具请求路径: ${dirPath}`)
+        ctx.logger.info(`[链路解析] 解析后绝对路径: ${absoluteDirPath}`)
+        ctx.logger.info(`[链路中间] 项目绝对路径: ${absoluteProjectPath}`)
+        ctx.logger.info(`[链路中间] 工具相对路径: ${relativePath}`)
         
         if (relativePath.startsWith('..')) {
           throw new Error(
@@ -42,6 +55,9 @@ const listTool = {
             `请先打开项目文件夹`
           )
         }
+      } else {
+        absoluteDirPath = path.resolve(dirPath)
+        ctx.logger.info(`[链路终点] 未设置项目路径，使用默认工作目录: ${absoluteDirPath}`)
       }
       
       if (!fs.existsSync(absoluteDirPath)) {

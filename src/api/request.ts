@@ -315,12 +315,12 @@ export const mcpApi = {
   async fetchReadme(url: string): Promise<string> {
     return request.get<string>('/api/mcp/fetch-readme', { url })
   },
-
+  
   // AI分析README并提取配置
   async analyzeReadme(readmeContent: string): Promise<any> {
     return request.post('/api/mcp/analyze-readme', { readmeContent })
   },
-
+  
   // 添加MCP服务器
   async addMcpServer(serverData: Record<string, any>): Promise<any> {
     return request.post('/api/mcp/add-server', serverData)
@@ -349,6 +349,11 @@ export const mcpApi = {
   // 停止MCP服务器
   async stopMcpServer(serverKey: string): Promise<any> {
     return request.post(`/api/mcp/server/${serverKey}/stop`)
+  },
+  
+  // 设置项目路径
+  async setProjectPath(path: string): Promise<any> {
+    return request.post('/api/project/set-path', { path })
   },
 }
 

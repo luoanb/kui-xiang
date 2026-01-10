@@ -95,18 +95,6 @@ class AppBootHook {
       });
       
       this.app.logger.info('数据库结构同步成功');
-      
-      // 切换到用户选择的项目路径
-      const projectService = this.app.service.project;
-      const projectPath = projectService.getProjectPath();
-      
-      if (projectPath) {
-        this.app.logger.info(`[工作目录] 切换到项目路径: ${projectPath}`);
-        process.chdir(projectPath);
-        this.app.logger.info(`[工作目录] 当前工作目录: ${process.cwd()}`);
-      } else {
-        this.app.logger.info('[工作目录] 未设置项目路径，使用默认工作目录');
-      }
     } catch (error) {
       if (error.name === 'SequelizeUniqueConstraintError') {
         this.app.logger.warn('检测到备份表冲突，尝试使用替代方案同步...');
@@ -127,6 +115,23 @@ class AppBootHook {
       const updateDatabase = require('./scripts/updateDatabase');
       await updateDatabase(this.app.logger);
       this.app.logger.info('数据库初始化/更新成功');
+      
+      // 切换到用户选择的项目路径
+      try {
+        const ctx = this.app.createAnonymousContext()
+        const projectPath = ctx.service.project.getProjectPath()
+        
+        if (projectPath) {
+          this.app.logger.info(`[工作目录] 切换到项目路径: ${projectPath}`)
+          process.chdir(projectPath)
+          this.app.logger.info(`[工作目录] 当前工作目录: ${process.cwd()}`)
+        } else {
+          this.app.logger.info('[工作目录] 未设置项目路径，使用默认工作目录')
+        }
+      } catch (error) {
+        this.app.logger.error('[工作目录] 切换到项目路径失败:', error)
+      }
+      
       // 尝试在 didReady 中初始化 MCP，确保在生命周期中尽早触发
       try {
         console.log('[MCP] 尝试在 didReady 中触发初始化')

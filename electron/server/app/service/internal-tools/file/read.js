@@ -23,12 +23,19 @@ const readFileTool = {
     try {
       const projectService = ctx.service.project
       
-      const absoluteFilePath = path.resolve(filePath)
-      
       const projectPath = projectService.getProjectPath()
+      
+      let absoluteFilePath
       
       if (projectPath) {
         const absoluteProjectPath = path.resolve(projectPath)
+        
+        if (path.isAbsolute(filePath)) {
+          absoluteFilePath = path.resolve(filePath)
+        } else {
+          absoluteFilePath = path.resolve(absoluteProjectPath, filePath)
+        }
+        
         const relativePath = path.relative(absoluteProjectPath, absoluteFilePath)
         
         if (relativePath.startsWith('..')) {
@@ -39,6 +46,8 @@ const readFileTool = {
             `请先打开项目文件夹`
           )
         }
+      } else {
+        absoluteFilePath = path.resolve(filePath)
       }
       
       if (!fs.existsSync(absoluteFilePath)) {

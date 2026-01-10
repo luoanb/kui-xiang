@@ -1,8 +1,16 @@
 const fs = require('fs')
 const path = require('path')
 const paths = require('../config/paths')
-const { app } = require('electron')
 const sqlite3 = require('sqlite3').verbose()
+
+let electronApp
+try {
+  if (process.type === 'browser' || process.type === 'renderer') {
+    electronApp = require('electron').app
+  }
+} catch (error) {
+  // 非 Electron 环境，忽略错误
+}
 let logger = null
 let pkg = null
 // console.log('process.env.NODE_ENV:', process.env.NODE_ENV)

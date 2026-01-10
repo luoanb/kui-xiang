@@ -44,8 +44,14 @@ class ProjectService extends Service {
 
       fs.writeFileSync(PROJECT_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8')
       
+      const oldCwd = process.cwd()
+      process.chdir(absolutePath)
+      const newCwd = process.cwd()
+      
       this.ctx.logger.info(`[ProjectService] 设置项目路径: ${absolutePath}`)
-      return { success: true, path: absolutePath }
+      this.ctx.logger.info(`[ProjectService] 工作目录已切换: ${oldCwd} -> ${newCwd}`)
+      
+      return { success: true, path: absolutePath, oldCwd, newCwd }
     } catch (error) {
       this.ctx.logger.error('[ProjectService] 设置项目路径失败:', error)
       throw error

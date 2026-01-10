@@ -28,10 +28,20 @@ const copyTool = {
       
       const projectPath = projectService.getProjectPath()
       
+      ctx.logger.info(`[链路起点] 用户选择的项目路径: ${projectPath}`)
+      ctx.logger.info(`[链路起点] 源路径: ${sourcePath}`)
+      ctx.logger.info(`[链路起点] 目标路径: ${destPath}`)
+      ctx.logger.info(`[链路解析] 解析后源路径: ${absoluteSourcePath}`)
+      ctx.logger.info(`[链路解析] 解析后目标路径: ${absoluteDestPath}`)
+      
       if (projectPath) {
         const absoluteProjectPath = path.resolve(projectPath)
         const sourceRelative = path.relative(absoluteProjectPath, absoluteSourcePath)
         const destRelative = path.relative(absoluteProjectPath, absoluteDestPath)
+        
+        ctx.logger.info(`[链路中间] 项目绝对路径: ${absoluteProjectPath}`)
+        ctx.logger.info(`[链路中间] 源相对路径: ${sourceRelative}`)
+        ctx.logger.info(`[链路中间] 目标相对路径: ${destRelative}`)
         
         if (sourceRelative.startsWith('..') || destRelative.startsWith('..')) {
           throw new Error(
@@ -42,6 +52,12 @@ const copyTool = {
             '请先打开项目文件夹'
           )
         }
+      } else {
+        ctx.logger.info(`[链路终点] 未设置项目路径，使用默认工作目录`)
+      }
+      
+      if (!fs.existsSync(absoluteSourcePath)) {
+        throw new Error(`源路径不存在: ${absoluteSourcePath}`)
       }
       
       if (!fs.existsSync(absoluteSourcePath)) {

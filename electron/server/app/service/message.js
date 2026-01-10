@@ -419,12 +419,12 @@ class MessageService extends Service {
       return []
     }
 
-    console.log('[message_service] toModelMsg 原始消息摘要:', messages.map(msg => ({
-      id: msg.id,
-      role: msg.role,
-      content: msg.content?.substring(0, 30) || '(empty)',
-      isRoundEnd: msg.is_round_end
-    })))
+    // console.log('[message_service] toModelMsg 原始消息摘要:', messages.map(msg => ({
+    //   id: msg.id,
+    //   role: msg.role,
+    //   content: msg.content?.substring(0, 30) || '(empty)',
+    //   isRoundEnd: msg.is_round_end
+    // })))
 
     // 从最新消息往前查找，找到第一条 is_round_end = true 的消息
     let startIndex = 0
@@ -445,16 +445,16 @@ class MessageService extends Service {
     // 截取从该消息开始到最新的所有消息
     const filteredMessages = messages.slice(startIndex)
 
-    console.log('[message_service] toModelMsg 截取后的消息:', {
-      startIndex,
-      filteredCount: filteredMessages.length,
-      filteredMessages: filteredMessages.map(msg => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content?.substring(0, 30) || '(empty)',
-        isRoundEnd: msg.is_round_end
-      }))
-    })
+    // console.log('[message_service] toModelMsg 截取后的消息:', {
+    //   startIndex,
+    //   filteredCount: filteredMessages.length,
+    //   filteredMessages: filteredMessages.map(msg => ({
+    //     id: msg.id,
+    //     role: msg.role,
+    //     content: msg.content?.substring(0, 30) || '(empty)',
+    //     isRoundEnd: msg.is_round_end
+    //   }))
+    // })
 
     const mergedMessages = []
     let currentMessage = { ...filteredMessages[0] }

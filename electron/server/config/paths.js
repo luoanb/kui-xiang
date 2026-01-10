@@ -5,15 +5,19 @@ const os = require('os')
 function getAppDataPath() {
   // 如果是在 Electron 环境中
   if (process.type === 'browser' || process.type === 'renderer') {
-    const { app } = require('electron')
-    return app.getPath('userData')
+    try {
+      const { app } = require('electron')
+      return app.getPath('userData')
+    } catch (error) {
+      // 如果 require 失败，使用备用方案
+    }
   }
   
   // 如果是在独立的 EggJS 环境中
   const appName = 'eechat'
   switch (process.platform) {
     case 'win32':
-      return path.join(process.env.APPDATA, appName)
+      return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), appName)
     case 'darwin':
       return path.join(os.homedir(), 'Library', 'Application Support', appName)
     case 'linux':

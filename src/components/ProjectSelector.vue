@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { error } from "node:console"
 
 const projectStore = useProjectStore()
 const version = ref('')
@@ -65,9 +66,9 @@ const handleSelectFromHistory = async (folder: any) => {
     window.ipcRenderer.invoke('update-filesystem-path', folder.path).catch(error => {
       console.error('更新filesystem路径失败:', error)
     })
-    
-    mcpApi.post('/api/project/set-path', { path: folder.path }).catch(error => {
+    mcpApi.setProjectPath(folder.path).catch(error=>{
       console.error('设置项目路径失败:', error)
+
     })
   }
 }
@@ -83,7 +84,7 @@ const handleRemoveFromHistory = (folderPath: string) => {
       <Button variant="ghost" class="h-6 px-2 text-xs font-bold hover:bg-transparent">
         <span class="flex items-center gap-1">
           <span>{{ currentFolderName }}</span>
-          <span v-if="version" class="opacity-30 font-normal">v{{ version }}</span>
+          <span v-if="version" class="opacity-30 font-normal">{{ version }}</span>
           <ChevronDown class="w-3 h-3" />
         </span>
       </Button>
