@@ -38,16 +38,15 @@ module.exports = appInfo => {
   // 日志
   config.logger = {
     dir: path.join(paths.logsPath, 'eechat-server'),
-    allowDebugAtProd: true,
-    level: 'DEBUG',
-    consoleLevel: 'DEBUG',
+    allowDebugAtProd: false,
+    level: 'NONE', 
+    consoleLevel: 'NONE',
     encoding: "utf-8",
     when: 'D',
     keepFileExt: true,
     maxFiles: 10,
     outputJSON: false, // 以可读格式输出，而不是 JSON
-    disableConsoleAfterReady: false, // 确保应用启动后控制台输出不被禁用
-    disableFile: true, // 禁用文件日志写入
+    disableConsoleAfterReady: true, // 确保应用启动后控制台输出不被禁用
   }
 
   // 添加数据库配置

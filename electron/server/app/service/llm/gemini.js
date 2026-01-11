@@ -81,21 +81,9 @@ class GeminiService extends BaseLLMService {
         : model.id
       /**
        * 使用 MessageService 转换消息格式
-       * 去除 reasoning_content 标签，合并相同角色消息
+       * 去除 reasoning_content 标签，合并相同角色消息，并追加 SystemPrompt
        */
-      const mergedMessages = ctx.service.message.toModelMsg(messages)
-
-      const systemPrompts = this.ctx.service.prompt.buildSystemPrompt(
-        sessionSettings.systemPrompt,
-        docs,
-        tools,
-        // customPrompts
-      );
-
-      const messagesWithSystemPrompt = [
-        { role:'system', content: systemPrompts },
-        ...mergedMessages,
-      ]
+      const messagesWithSystemPrompt = ctx.service.message.toModelMsg(messages, sessionSettings, docs, tools)
 
       console.log('[gemini_js]', sessionSettings)
 

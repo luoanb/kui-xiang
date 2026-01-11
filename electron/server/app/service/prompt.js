@@ -1,10 +1,113 @@
 'use strict';
 
 const Service = require('egg').Service;
+const fs = require('fs');
+const path = require('path');
 
 class PromptService extends Service {
   constructor(ctx) {
     super(ctx);
+  }
+
+  /**
+   * 按优先级查找提示词文件夹
+   * 优先级：.kui-xiang/rules > .cursor/rules > .trae/rules
+   * @param {string} projectPath - 项目路径
+   * @returns {string|null} 找到的提示词文件夹路径，未找到返回 null
+   */
+  findPromptFolder(projectPath) {
+    const folders = [
+      '.kui-xiang/rules',
+      '.cursor/rules',
+      '.trae/rules'
+    ];
+
+    for (const folder of folders) {
+      const folderPath = path.join(projectPath, folder);
+      if (fs.existsSync(folderPath)) {
+        this.ctx.logger.info(`[PromptService] 找到提示词文件夹: ${folderPath}`);
+        return folderPath;
+      }
+    }
+
+    this.ctx.logger.info('[PromptService] 未找到提示词文件夹');
+    return null;
+  }
+
+  /**
+   * 读取提示词文件夹中的所有文件
+   * @param {string} folderPath - 提示词文件夹路径
+   * @returns {Array<{name: string, content: string}>} 文件列表
+   */
+  readPromptFiles(folderPath) {
+    const files = [];
+    const supportedExtensions = ['.md', '.mdc', '.xml'];
+
+    try {
+      const entries = fs.readdirSync(folderPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (supportedExtensions.includes(ext)) {
+            const filePath = path.join(folderPath, entry.name);
+            const content = fs.readFileSync(filePath, 'utf-8');
+            const name = path.basename(entry.name, ext);
+            files.push({ name, content });
+            this.ctx.logger.info(`[PromptService] 读取提示词文件: ${entry.name}`);
+          }
+        }
+      }
+    } catch (error) {
+      this.ctx.logger.error(`[PromptService] 读取提示词文件夹失败: ${error.message}`);
+    }
+
+    return files;
+  }
+
+  /**
+   * 使用 XML 格式整合所有提示词
+   * @param {Array<{name: string, content: string}>} promptFiles - 提示词文件列表
+   * @returns {string} 整合后的提示词
+   */
+  mergePromptsToXml(promptFiles) {
+    if (!promptFiles || promptFiles.length === 0) {
+      return '';
+    }
+
+    const mergedContent = promptFiles.map(file => {
+      return `<${file.name}>\n${file.content}\n</${file.name}>`;
+    }).join('\n\n');
+
+    return mergedContent;
+  }
+
+  /**
+   * 从项目文件夹加载提示词
+   * @param {string} projectPath - 项目路径
+   * @returns {string} 整合后的提示词，未找到返回空字符串
+   */
+  loadProjectPrompts(projectPath) {
+    if (!projectPath) {
+      this.ctx.logger.info('[PromptService] 项目路径为空，跳过加载提示词');
+      return '';
+    }
+
+    const promptFolder = this.findPromptFolder(projectPath);
+    if (!promptFolder) {
+      return '';
+    }
+
+    const promptFiles = this.readPromptFiles(promptFolder);
+    if (promptFiles.length === 0) {
+      this.ctx.logger.info('[PromptService] 提示词文件夹为空');
+      return '';
+    }
+
+    const mergedPrompts = this.mergePromptsToXml(promptFiles);
+    this.ctx.logger.info(`[PromptService] 成功加载 ${promptFiles.length} 个提示词文件`);
+
+    return mergedPrompts;
   }
 
   /**
@@ -22,9 +125,16 @@ class PromptService extends Service {
 
     let finalPrompt = '';
 
+    // 加载项目文件夹中的提示词
+    const projectPath = this.ctx.service.project.getProjectPath();
+    const projectPrompts = this.loadProjectPrompts(projectPath);
+    if (projectPrompts) {
+      finalPrompt = projectPrompts;
+    }
+
     // 添加用户设置的系统提示词
     if (systemPrompt) {
-      finalPrompt = systemPrompt;
+      finalPrompt = finalPrompt ? `${finalPrompt}\n\n${systemPrompt}` : systemPrompt;
     }
 
     // 添加知识库文档提示词
@@ -46,7 +156,8 @@ class PromptService extends Service {
       const customPrompt = this.buildCustomPrompt(customPrompts, isChinese);
       finalPrompt = finalPrompt ? `${finalPrompt}\n\n${customPrompt}` : customPrompt;
     }
-
+    // this.ctx.logger.info(`[PromptService] 成功构建系统提示词`,finalPrompt);
+    console.log(`[PromptService] 成功构建系统提示词`,finalPrompt);
     return finalPrompt;
   }
 

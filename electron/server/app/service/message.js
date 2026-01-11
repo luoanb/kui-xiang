@@ -409,9 +409,12 @@ class MessageService extends Service {
   /**
    * 转换为模型所需格式（去除 reasoning_content 标签，合并相同角色）
    * @param {Array} messages - 消息数组
+   * @param {Object} sessionSettings - 会话设置（可选）
+   * @param {Array} docs - 文档列表（可选）
+   * @param {Array} tools - 工具列表（可选）
    * @returns {Array} 转换后的消息数组 { role, content }[]
    */
-  toModelMsg(messages) {
+  toModelMsg(messages, sessionSettings = {}, docs = [], tools = []) {
     console.log('[message_service] toModelMsg 输入消息数量:', messages?.length)
     
     if (!messages || messages.length === 0) {
@@ -515,7 +518,28 @@ class MessageService extends Service {
       }))
     })
 
-    return mergedMessages
+    const hasSystemMessage = mergedMessages.length > 0 && mergedMessages[0].role === 'system'
+    
+    const systemPrompts = this.ctx.service.prompt.buildSystemPrompt(
+      sessionSettings.systemPrompt,
+      docs,
+      tools,
+    );
+
+    let messagesWithSystemPrompt
+    if (hasSystemMessage) {
+      messagesWithSystemPrompt = [
+        { role:'system', content: systemPrompts },
+        ...mergedMessages.slice(1),
+      ]
+    } else {
+      messagesWithSystemPrompt = [
+        { role:'system', content: systemPrompts },
+        ...mergedMessages,
+      ]
+    }
+
+    return messagesWithSystemPrompt
   }
 }
 

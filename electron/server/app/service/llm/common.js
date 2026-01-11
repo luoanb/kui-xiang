@@ -71,31 +71,9 @@ class DeepseekService extends BaseLLMService {
         : model.id
       /**
        * 使用 MessageService 转换消息格式
-       * 去除 reasoning_content 标签，合并相同角色消息
+       * 去除 reasoning_content 标签，合并相同角色消息，并追加 SystemPrompt
        */
-      const mergedMessages = ctx.service.message.toModelMsg(messages)
-
-      // 检查 messages 中是否已经有 system 消息（前端可能已经添加了选中的提示词）
-      const hasSystemMessage = mergedMessages.length > 0 && mergedMessages[0].role === 'system'
-      
-      let messagesWithSystemPrompt
-      if (hasSystemMessage) {
-        // 如果已经有 system 消息，直接使用（前端已经添加了选中的提示词）
-        messagesWithSystemPrompt = mergedMessages
-      } else {
-        // 如果没有 system 消息，构建并添加系统提示词
-        const systemPrompts = this.ctx.service.prompt.buildSystemPrompt(
-          sessionSettings.systemPrompt,
-          docs,
-          tools,
-          // customPrompts
-        );
-
-        messagesWithSystemPrompt = [
-          { role:'system', content: systemPrompts },
-          ...mergedMessages,
-        ]
-      }
+      const messagesWithSystemPrompt = ctx.service.message.toModelMsg(messages, sessionSettings, docs, tools)
 
       // const messagesWithSystemPrompt = sessionSettings.systemPrompt
       //   ? [
