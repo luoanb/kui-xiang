@@ -21,8 +21,8 @@ const analytics = Analytics({
 })
 
 const routes = [
-  { path: '/', component: Chat },
-  { path: '/team', component: Team },
+  { path: '/', component: Team },
+  { path: '/chat', component: Chat },
   { path: '/rag', component: Rag },
   { path: '/discover', component: Discover },
   { path: '/setting', component: Setting },

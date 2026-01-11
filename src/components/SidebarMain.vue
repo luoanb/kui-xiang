@@ -48,14 +48,8 @@ const data = {
   },
   navMain: [
     {
-      title: t('chat.newChat'),
-      url: '/',
-      icon: Inbox,
-      isActive: false,
-    },
-    {
       title: t('chat.team.title'),
-      url: '/team',
+      url: '/',
       icon: Users,
       isActive: false,
     },
