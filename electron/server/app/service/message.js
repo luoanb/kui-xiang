@@ -508,15 +508,6 @@ class MessageService extends Service {
       content: currentMessage.content,
     })
 
-    console.log('[message_service] toModelMsg 转换结果:', {
-      original: messages.length,
-      filtered: filteredMessages.length,
-      merged: mergedMessages.length,
-      mergedSummary: mergedMessages.map(msg => ({
-        role: msg.role,
-        content: msg.content?.substring(0, 30) || '(empty)'
-      }))
-    })
 
     const hasSystemMessage = mergedMessages.length > 0 && mergedMessages[0].role === 'system'
     
@@ -526,6 +517,7 @@ class MessageService extends Service {
       tools,
     );
 
+    console.log('[message_service] toModelMsg 系统提示:', systemPrompts)
     let messagesWithSystemPrompt
     if (hasSystemMessage) {
       messagesWithSystemPrompt = [

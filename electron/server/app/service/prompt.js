@@ -4,6 +4,24 @@ const Service = require('egg').Service;
 const fs = require('fs');
 const path = require('path');
 
+const getPrompt = (systemPrompt, docsPrompt, toolsPrompt, teamPrompt) => {
+  return `
+<全能助手>
+<docs>
+${docsPrompt}
+</docs>
+<tools>
+${toolsPrompt}
+</tools>
+<workflow>
+**你需要严格按照一下规则执行**
+${systemPrompt}
+${teamPrompt}
+</workflow>
+</全能助手>
+`
+}
+
 class PromptService extends Service {
   constructor(ctx) {
     super(ctx);
@@ -137,28 +155,41 @@ class PromptService extends Service {
       finalPrompt = finalPrompt ? `${finalPrompt}\n\n${systemPrompt}` : systemPrompt;
     }
 
+    let docsPrompt = ''
     // 添加知识库文档提示词
     if (docs && docs.matches && docs.matches.length > 0) {
       const docsList = docs.matches
       const question = docs.query
-      const docsPrompt = this.buildDocsPrompt(docsList, question, isChinese);
-      finalPrompt = finalPrompt ? `${finalPrompt}\n\n${docsPrompt}` : docsPrompt;
+      docsPrompt = this.buildDocsPrompt(docsList, question, isChinese);
+      // finalPrompt = finalPrompt ? `${finalPrompt}\n\n${docsPrompt}` : docsPrompt;
     }
 
     // 添加工具提示词
+    let toolsPrompt = ''
     if (tools && tools.length > 0) {
-      const toolsPrompt = this.buildToolsPrompt(tools, isChinese);
-      finalPrompt = finalPrompt ? `${finalPrompt}\n\n${toolsPrompt}` : toolsPrompt;
+      toolsPrompt = this.buildToolsPrompt(tools, isChinese);
+      // finalPrompt = finalPrompt ? `${finalPrompt}\n\n${toolsPrompt}` : toolsPrompt;
     }
 
-    // 添加自定义提示词
-    if (customPrompts) {
-      const customPrompt = this.buildCustomPrompt(customPrompts, isChinese);
-      finalPrompt = finalPrompt ? `${finalPrompt}\n\n${customPrompt}` : customPrompt;
-    }
+    // // 添加自定义提示词
+    // if (customPrompts) {
+    //   const customPrompt = this.buildCustomPrompt(customPrompts, isChinese);
+    //   finalPrompt = finalPrompt ? `${finalPrompt}\n\n${customPrompt}` : customPrompt;
+    // }
+
+    // 添加团队提示词
+    const teamPrompt = this.ctx.service.team.getTeamPrompt();
+    // if (teamPrompt) {
+    //   finalPrompt = finalPrompt ? `${finalPrompt}\n\n${teamPrompt}` : teamPrompt;
+    // }
+
     // this.ctx.logger.info(`[PromptService] 成功构建系统提示词`,finalPrompt);
-    console.log(`[PromptService] 成功构建系统提示词`,finalPrompt);
-    return finalPrompt;
+    // console.log(`[PromptService] 成功构建系统提示词`,finalPrompt);
+    // return finalPrompt;
+    const p = getPrompt(finalPrompt,docsPrompt,toolsPrompt,teamPrompt)
+    // this.ctx.logger.info(`[PromptService] 成功构建系统提示词`,p);
+    
+    return p
   }
 
   /**
