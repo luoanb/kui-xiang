@@ -517,7 +517,7 @@ class MessageService extends Service {
       tools,
     );
 
-    console.log('[message_service] toModelMsg 系统提示:', systemPrompts)
+    // console.log('[message_service] toModelMsg 系统提示:', systemPrompts)
     let messagesWithSystemPrompt
     if (hasSystemMessage) {
       messagesWithSystemPrompt = [

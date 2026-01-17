@@ -301,6 +301,7 @@ class TeamService extends Service {
     const parts = []
     if (allRoles.length > 0) {
       for (const role of allRoles) {
+        // 仅需要meta信息
         const roleInfo = `<${role.name}>
     <meta>
        <name>${role.name}</name>
@@ -309,7 +310,6 @@ class TeamService extends Service {
            ${role.team_division}
        </team-division>
     </meta>
-    ${role.body}
 </${role.name}>`
         parts.push(roleInfo)
       }
@@ -318,6 +318,7 @@ class TeamService extends Service {
     const result = getTeamRootPrompt(rootPrompt, parts.join('\n'))
     // this.ctx.logger.info(`[TeamService] 成功构建团队提示词，包含 ${allRoles.length} 个职位`)
     console.log('[TeamService] 成功构建团队提示词，包含', allRoles.length, '个职位');
+    console.log('[TeamService] 团队提示词:', result);
     
     return result
   }

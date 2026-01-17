@@ -6,7 +6,7 @@ const path = require('path');
 
 const getPrompt = (systemPrompt, docsPrompt, toolsPrompt, teamPrompt) => {
   return `
-<全能助手>
+<>
 <docs>
 ${docsPrompt}
 </docs>
@@ -18,7 +18,7 @@ ${toolsPrompt}
 ${systemPrompt}
 ${teamPrompt}
 </workflow>
-</全能助手>
+</>
 `
 }
 
@@ -188,6 +188,7 @@ class PromptService extends Service {
     // return finalPrompt;
     const p = getPrompt(finalPrompt,docsPrompt,toolsPrompt,teamPrompt)
     // this.ctx.logger.info(`[PromptService] 成功构建系统提示词`,p);
+    console.log(`[PromptService] 系统提示词长度`,p.length);
     
     return p
   }
