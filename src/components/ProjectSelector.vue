@@ -48,7 +48,7 @@ const handleOpenFolder = async () => {
       }
       
       try {
-        await mcpApi.post('/api/project/set-path', { path: result.path })
+        await mcpApi.setProjectPath(result.path)
         console.log('项目路径已设置:', result.path)
       } catch (error) {
         console.error('设置项目路径失败:', error)

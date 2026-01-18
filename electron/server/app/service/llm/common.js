@@ -85,16 +85,16 @@ class DeepseekService extends BaseLLMService {
       // console.log('[common_js]', sessionSettings)
 
       // 如果 config 中有 promptConfig，使用它；否则使用 sessionSettings
-      const promptConfig = config?.promptConfig || {}
+      const promptConfig = (config && config.promptConfig) || {}
       const params = {
         model: model_id,
         messages: messagesWithSystemPrompt,
         stream: true,
         // max_tokens: 2048,
-        temperature: promptConfig.temperature ?? sessionSettings.temperature,
-        top_p: promptConfig.top_p ?? sessionSettings.top_p,
-        presence_penalty: promptConfig.presence_penalty ?? sessionSettings.presence_penalty,
-        frequency_penalty: promptConfig.frequency_penalty ?? sessionSettings.frequency_penalty,
+        temperature: promptConfig.temperature || sessionSettings.temperature,
+        top_p: promptConfig.top_p || sessionSettings.top_p,
+        presence_penalty: promptConfig.presence_penalty || sessionSettings.presence_penalty,
+        frequency_penalty: promptConfig.frequency_penalty || sessionSettings.frequency_penalty,
       }
       // console.log(params)
       if (tools && tools.length > 0) {

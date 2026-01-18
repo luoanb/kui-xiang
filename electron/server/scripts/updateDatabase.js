@@ -125,7 +125,8 @@ function getInitSqlFiles() {
         }))
       }
     }
-    throw new Error(`无法找到初始化SQL目录: ${initSqlDir}`)
+    logger.warn(`无法找到初始化SQL目录，跳过初始化步骤: ${initSqlDir}`)
+    return []
   }
   
   const files = fs

@@ -3,16 +3,6 @@ const os = require('os')
 
 // 获取应用数据目录
 function getAppDataPath() {
-  // 如果是在 Electron 环境中
-  if (process.type === 'browser' || process.type === 'renderer') {
-    try {
-      const { app } = require('electron')
-      return app.getPath('userData')
-    } catch (error) {
-      // 如果 require 失败，使用备用方案
-    }
-  }
-  
   // 如果是在独立的 EggJS 环境中
   const appName = 'eechat'
   switch (process.platform) {

@@ -249,7 +249,7 @@ class TeamPromptService extends Service {
         // 过滤出正在运行且启用的服务器
         const runningServers = installedServers.filter(server => {
           const isRunning = server.status === 'running'
-          const isEnabled = server.config?.enabled !== false // 默认为 true，只有显式设置为 false 才禁用
+          const isEnabled = (server.config && server.config.enabled !== false) // 默认为 true，只有显式设置为 false 才禁用
           return isRunning && isEnabled
         })
 

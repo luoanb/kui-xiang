@@ -68,7 +68,9 @@ class TeamService extends Service {
    * @returns {Object|null} 解析结果 { name, desc, team_division, body }
    */
   parseFrontMatter(content) {
-    const lines = content.split('\n')
+    // Normalize line endings to handle both Windows and Unix formats
+    const normalizedContent = content.replace(/\r\n/g, '\n')
+    const lines = normalizedContent.split('\n')
     if (lines.length < 3 || lines[0].trim() !== '---') {
       return null
     }
@@ -100,7 +102,7 @@ class TeamService extends Service {
         result.desc = value
       } else if (key === 'name') {
         result.name = value
-      } else if (key === 'team-division') {
+      } else if (key === 'team-division' || key === 'teamDivision') {
         result.team_division = value
       }
     }
@@ -114,7 +116,9 @@ class TeamService extends Service {
    * @returns {Object|null} 解析结果 { name, desc, team_division, body }
    */
   parseXml(content) {
-    const outerTagMatch = content.match(/<([^>]+)>([\s\S]*)<\/\1>/i)
+    // Normalize line endings to handle both Windows and Unix formats
+    const normalizedContent = content.replace(/\r\n/g, '\n')
+    const outerTagMatch = normalizedContent.match(/<([^>]+)>([\s\S]*)<\/\1>/i)
     if (!outerTagMatch) {
       return null
     }
@@ -160,19 +164,24 @@ class TeamService extends Service {
 
       if (ext === '.xml') {
         result = this.parseXml(content)
+        console.log(`[TeamService] 解析XML文件 ${path.basename(filePath)}:`, result ? '成功' : '失败')
       } else if (ext === '.md' || ext === '.mdc') {
         result = this.parseFrontMatter(content)
+        console.log(`[TeamService] 解析Markdown文件 ${path.basename(filePath)}:`, result ? '成功' : '失败')
       }
 
       if (result) {
         result.filePath = filePath
         result.fileName = path.basename(filePath)
         this.ctx.logger.info(`[TeamService] 成功解析团队职位文件: ${path.basename(filePath)}`)
+      } else {
+        console.log(`[TeamService] 解析文件失败 ${path.basename(filePath)}，扩展名: ${ext}`)
       }
 
       return result
     } catch (error) {
       this.ctx.logger.error(`[TeamService] 解析文件失败 ${filePath}:`, error)
+      console.log(`[TeamService] 读取文件异常 ${path.basename(filePath)}:`, error.message)
       return null
     }
   }
@@ -184,31 +193,62 @@ class TeamService extends Service {
    */
   readTeamRoleFiles(teamPath) {
     const roles = []
-
-    if (!fs.existsSync(teamPath)) {
-      this.ctx.logger.info(`[TeamService] team 文件夹不存在: ${teamPath}`)
-      return roles
-    }
+    const roleMap = new Map() // 用于去重，key为职位名称
 
     try {
+      if (!fs.existsSync(teamPath)) {
+        this.ctx.logger.info(`[TeamService] team 文件夹不存在: ${teamPath}`)
+        return roles
+      }
+
       const entries = fs.readdirSync(teamPath, { withFileTypes: true })
       console.log('[TeamService] team 文件夹中的所有文件:', entries.map(e => e.name))
 
+      // 首先收集所有文件，按优先级排序：xml > mdc > md
+      const files = []
       for (const entry of entries) {
         if (entry.isFile()) {
           const ext = path.extname(entry.name).toLowerCase()
           console.log('[TeamService] 检查文件:', entry.name, '扩展名:', ext, '是否支持:', this.supportedExtensions.includes(ext))
           if (this.supportedExtensions.includes(ext)) {
             const filePath = path.join(teamPath, entry.name)
-            const result = this.parseTeamRoleFile(filePath)
-            if (result) {
-              roles.push(result)
-            }
+            // 分配优先级：xml=3, mdc=2, md=1
+            const priority = ext === '.xml' ? 3 : ext === '.mdc' ? 2 : 1
+            files.push({ filePath, ext, priority, name: entry.name })
           }
         }
       }
+
+      // 按优先级降序排序，这样高优先级的文件会先处理
+      files.sort((a, b) => b.priority - a.priority)
+
+      // 处理文件，高优先级的会覆盖低优先级的
+      for (const file of files) {
+        try {
+          const result = this.parseTeamRoleFile(file.filePath)
+          if (result && result.name) {
+            // 如果已经存在同名职位，且当前文件优先级更高，则替换
+            const existing = roleMap.get(result.name)
+            if (!existing || file.priority > existing.priority) {
+              roleMap.set(result.name, { ...result, priority: file.priority, fileName: file.name })
+              console.log(`[TeamService] 添加/更新职位: ${result.name} (来自 ${file.name}, 优先级: ${file.priority})`)
+            } else {
+              console.log(`[TeamService] 跳过职位: ${result.name} (已有更高优先级文件: ${existing.fileName})`)
+            }
+          }
+        } catch (error) {
+          this.ctx.logger.error(`[TeamService] 处理文件失败 ${file.filePath}:`, error)
+          console.error(`[TeamService] 处理文件失败 ${file.name}:`, error.message)
+        }
+      }
+
+      // 将Map转换为数组
+      for (const [name, role] of roleMap) {
+        roles.push(role)
+      }
     } catch (error) {
       this.ctx.logger.error(`[TeamService] 读取 team 文件夹失败 ${teamPath}:`, error)
+      console.error(`[TeamService] 读取 team 文件夹失败 ${teamPath}:`, error.message)
     }
 
     console.log('[TeamService] 最终加载到的职位数量:', roles.length)
@@ -222,17 +262,30 @@ class TeamService extends Service {
   getAllTeamRoles() {
     const allRoles = []
 
-    const projectPath = this.ctx.service.project.getProjectPath()
-    console.log('[TeamService] 项目 team 路径:', projectPath)
-    if (projectPath) {
-      const teamPath = path.join(projectPath, '.kui-xiang', 'team')
-      const projectRoles = this.readTeamRoleFiles(teamPath)
-      console.log('[TeamService] 项目目录加载到', projectRoles.length, '个职位')
-      allRoles.push(...projectRoles)
-    }
+    try {
+      // 读取用户目录下的团队文件
+      const userTeamPath = this.getUserTeamPath()
+      console.log('[TeamService] 用户 team 路径:', userTeamPath)
+      const userRoles = this.readTeamRoleFiles(userTeamPath)
+      console.log('[TeamService] 用户目录加载到', userRoles.length, '个职位')
+      allRoles.push(...userRoles)
 
-    this.ctx.logger.info(`[TeamService] 共加载 ${allRoles.length} 个团队职位`)
-    console.log('[TeamService_getAllTeamRoles] 共加载', allRoles.length, '个团队职位')
+      // 读取项目目录下的团队文件
+      const projectPath = this.ctx.service.project.getProjectPath()
+      console.log('[TeamService] 项目 team 路径:', projectPath)
+      if (projectPath) {
+        const teamPath = path.join(projectPath, '.kui-xiang', 'team')
+        const projectRoles = this.readTeamRoleFiles(teamPath)
+        console.log('[TeamService] 项目目录加载到', projectRoles.length, '个职位')
+        allRoles.push(...projectRoles)
+      }
+
+      this.ctx.logger.info(`[TeamService] 共加载 ${allRoles.length} 个团队职位`)
+      console.log('[TeamService_getAllTeamRoles] 共加载', allRoles.length, '个团队职位')
+    } catch (error) {
+      this.ctx.logger.error(`[TeamService] 获取团队职位失败:`, error)
+      console.error('[TeamService] 获取团队职位失败:', error)
+    }
     return allRoles
   }
 
@@ -246,7 +299,7 @@ class TeamService extends Service {
       return null
     }
 
-    const teamPath = path.join(projectPath, )
+    const teamPath = path.join(projectPath, '.kui-xiang', 'team')
     const supportedFiles = ['team.md', 'team.mdc', 'team.xml']
 
     for (const fileName of supportedFiles) {

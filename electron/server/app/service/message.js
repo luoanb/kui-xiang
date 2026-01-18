@@ -345,7 +345,7 @@ class MessageService extends Service {
         messages: allMessages.map(msg => ({
           id: msg.id,
           role: msg.role,
-          content: msg.content?.substring(0, 30) || '(empty)',
+          content: (msg.content && msg.content.substring(0, 30)) || '(empty)',
           isRoundEnd: msg.is_round_end
         }))
       })
@@ -415,7 +415,7 @@ class MessageService extends Service {
    * @returns {Array} 转换后的消息数组 { role, content }[]
    */
   toModelMsg(messages, sessionSettings = {}, docs = [], tools = []) {
-    console.log('[message_service] toModelMsg 输入消息数量:', messages?.length)
+    console.log('[message_service] toModelMsg 输入消息数量:', (messages && messages.length) || 0)
     
     if (!messages || messages.length === 0) {
       console.log('[message_service] toModelMsg 消息为空，返回空数组')
@@ -425,7 +425,7 @@ class MessageService extends Service {
     // console.log('[message_service] toModelMsg 原始消息摘要:', messages.map(msg => ({
     //   id: msg.id,
     //   role: msg.role,
-    //   content: msg.content?.substring(0, 30) || '(empty)',
+    //   content: (msg.content && msg.content.substring(0, 30)) || '(empty)',
     //   isRoundEnd: msg.is_round_end
     // })))
 
@@ -436,7 +436,7 @@ class MessageService extends Service {
         id: messages[i].id,
         role: messages[i].role,
         isRoundEnd: messages[i].is_round_end,
-        content: messages[i].content?.substring(0, 30) || '(empty)'
+        content: (messages[i].content && messages[i].content.substring(0, 30)) || '(empty)'
       })
       if (messages[i].is_round_end) {
         startIndex = i + 1  // 从下一条开始，不包含当前这条

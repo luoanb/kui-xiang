@@ -11,7 +11,7 @@ class McpController extends Controller {
       // 过滤出正在运行且启用的服务器
       const runningServers = installedServers.filter(server => {
         const isRunning = server.status === 'running'
-        const isEnabled = server.config?.enabled !== false
+        const isEnabled = (server.config && server.config.enabled !== false)
         return isRunning && isEnabled
       })
 

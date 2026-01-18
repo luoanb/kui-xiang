@@ -54,6 +54,7 @@ interface Message {
   role: "system" | "user" | "assistant";
   content: string;
   reasoning_content?: string;
+  id?: number;
 }
 const { t } = useI18n();
 const chatStore = useChatStore();

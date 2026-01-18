@@ -14,9 +14,9 @@ const modelsContent = require(modelsPath)
 
 // 判断模型是否为常用模型的规则
 function shouldEnableModel(model) {
-  const name = model.name?.toLowerCase() || ''
-  const id = model.id?.toLowerCase() || ''
-  const group = model.group?.toLowerCase() || ''
+  const name = (model.name && model.name.toLowerCase()) || ''
+  const id = (model.id && model.id.toLowerCase()) || ''
+  const group = (model.group && model.group.toLowerCase()) || ''
 
   // 1. 主流大模型
   if (

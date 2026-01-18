@@ -39,8 +39,8 @@ module.exports = appInfo => {
   config.logger = {
     dir: path.join(paths.logsPath, 'eechat-server'),
     allowDebugAtProd: false,
-    level: 'NONE', 
-    consoleLevel: 'NONE',
+    level: 'ERROR', 
+    consoleLevel: 'ERROR',
     encoding: "utf-8",
     when: 'D',
     keepFileExt: true,

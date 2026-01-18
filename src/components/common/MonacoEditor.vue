@@ -143,5 +143,5 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="editorContainer" :style="{ height: height === '400px' ? '100%' : height }"></div>
+  <div ref="editorContainer" :style="{ height: height === '400px' ? '100%' : height }" class="w-full"></div>
 </template>

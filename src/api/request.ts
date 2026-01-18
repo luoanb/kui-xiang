@@ -886,9 +886,7 @@ export const fileApi = {
 
   // 删除文件/目录
   async deleteFile(path: string, type: 'file' | 'directory'): Promise<{ success: boolean; message: string }> {
-    return request.delete<{ success: boolean; message: string }>('/api/file/delete', {
-      params: { path, type }
-    })
+    return request.delete<{ success: boolean; message: string }>('/api/file/delete?path=' + encodeURIComponent(path) + '&type=' + type)
   },
 
   // 重命名文件/目录
