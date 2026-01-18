@@ -99,6 +99,14 @@ module.exports = app => {
   router.post('/api/project/set-path', controller.project.setProjectPath)
   router.get('/api/project/get-path', controller.project.getProjectPath)
   router.post('/api/project/validate-path', controller.project.validatePath)
+  
+  // file management
+  router.get('/api/file/children', controller.file.getChildren)
+  router.get('/api/file/read', controller.file.readFile)
+  router.post('/api/file/write', controller.file.writeFile)
+  router.post('/api/file/create', controller.file.createFile)
+  router.delete('/api/file/delete', controller.file.deleteFile)
+  router.put('/api/file/rename', controller.file.renameFile)
   // MCP相关接口
   router.get('/api/mcp/fetch-readme', controller.mcp.fetchReadme)
   router.post('/api/mcp/analyze-readme', controller.mcp.analyzeReadme) // AI分析README

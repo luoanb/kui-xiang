@@ -8,13 +8,12 @@ import * as monaco from 'monaco-editor'
 
 // Set up Monaco environment with CDN workers to avoid build issues
 window.MonacoEnvironment = {
-  getWorkerUrl: () =>
-  {encodeURIComponent(
-    window.MonacoEnvironment = {
-    baseUrl: 'https://unpkg.com/monaco-editor@0.50.0/min/'
-    },
-    importScripts('https://unpkg.com/monaco-editor@0.50.0/min/vs/base/worker/workerMain.js')
-  )}
+  getWorkerUrl: function(_moduleId, _label) {
+    // Return a data URL that imports the worker script
+    return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
+      importScripts('https://unpkg.com/monaco-editor@0.50.0/min/vs/base/worker/workerMain.js');
+    `)}`;
+  }
 }
 
 const props = defineProps({
@@ -144,5 +143,5 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="editorContainer" :style="{ height }"></div>
+  <div ref="editorContainer" :style="{ height: height === '400px' ? '100%' : height }"></div>
 </template>

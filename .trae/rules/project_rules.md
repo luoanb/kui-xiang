@@ -6,9 +6,7 @@
 - 包管理器: pnpm
 
 ## 项目启动
-```bash
-pnpm run dev # 根目录启动
-```
+用户自己启动，你无需管理
 ### 前端开发
 **无需单独启动**
 启动 Vite 开发服务器（默认端口 3344）
@@ -142,3 +140,6 @@ const response = await fetch('http://127.0.0.1:7002/api/llm/providers')
 - 使用 pnpm workspace 管理依赖
 - 主进程和渲染进程通过 IPC 通信
 - Egg.js 服务器在主进程启动时自动启动，无需单独启动
+
+# log
+统一使用console.log进行日志输出

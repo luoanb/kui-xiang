@@ -842,3 +842,58 @@ export const teamPromptApi = {
   },
 }
 
+// 文件管理相关接口类型定义
+export interface FileItem {
+  name: string
+  path: string
+  type: 'file' | 'directory'
+  size: number
+  mtime: number
+  hasChildren: boolean
+}
+
+export interface DirectoryChildren {
+  path: string
+  children: FileItem[]
+}
+
+export interface FileContent {
+  path: string
+  content: string
+}
+
+// 文件管理相关的API方法
+export const fileApi = {
+  // 获取目录直接子项
+  async getChildren(path?: string): Promise<DirectoryChildren> {
+    return request.get<DirectoryChildren>('/api/file/children', { path })
+  },
+
+  // 读取文件内容
+  async readFile(path: string): Promise<FileContent> {
+    return request.get<FileContent>('/api/file/read', { path })
+  },
+
+  // 写入文件内容
+  async writeFile(path: string, content: string): Promise<{ success: boolean; message: string }> {
+    return request.post<{ success: boolean; message: string }>('/api/file/write', { path, content })
+  },
+
+  // 创建文件/目录
+  async createFile(path: string, type: 'file' | 'directory', content?: string): Promise<{ success: boolean; message: string }> {
+    return request.post<{ success: boolean; message: string }>('/api/file/create', { path, type, content })
+  },
+
+  // 删除文件/目录
+  async deleteFile(path: string, type: 'file' | 'directory'): Promise<{ success: boolean; message: string }> {
+    return request.delete<{ success: boolean; message: string }>('/api/file/delete', {
+      params: { path, type }
+    })
+  },
+
+  // 重命名文件/目录
+  async renameFile(oldPath: string, newPath: string): Promise<{ success: boolean; message: string }> {
+    return request.put<{ success: boolean; message: string }>('/api/file/rename', { oldPath, newPath })
+  }
+}
+

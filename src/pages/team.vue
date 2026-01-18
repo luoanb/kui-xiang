@@ -4,7 +4,8 @@ import { useChatStore } from "@/stores/chatStore";
 import { useI18n } from "vue-i18n";
 import { LLMModel } from "@/types/llm";
 import SidebarLeft from "@/components/chat/SidebarLeft.vue";
-import SidebarRightTeam from "@/components/chat/SidebarRightTeam.vue";
+// import SidebarRightTeam from "@/components/chat/SidebarRightTeam.vue"
+import FileManagerDrawer from "@/components/FileManagerDrawer.vue";
 import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import {
@@ -508,10 +509,10 @@ onMounted(() => {
     </div>
     <SidebarProvider
       class="w-auto"
-      :style="{ '--sidebar-width': '640px' }"
+      :style="{ '--sidebar-width': '800px' }"
       v-model:open="sidebarRightOpen"
     >
-      <SidebarRightTeam :activeSession="activeSession" />
+      <FileManagerDrawer />
     </SidebarProvider>
   </div>
 </template>
