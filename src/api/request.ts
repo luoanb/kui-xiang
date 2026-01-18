@@ -897,3 +897,36 @@ export const fileApi = {
   }
 }
 
+// 健康检查相关API
+export const healthApi = {
+  // 健康检查
+  async check() {
+    return request.get('/api/health')
+  },
+
+  // Ping检查
+  async ping() {
+    return request.get('/api/health/ping')
+  },
+
+  // 等待后端服务就绪
+  async waitForReady(maxRetries = 30, retryInterval = 1000): Promise<boolean> {
+    console.log('[health_api] 等待后端服务就绪...')
+    
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        console.log(`[health_api] 尝试连接后端服务 (${i + 1}/${maxRetries})...`)
+        await this.ping()
+        console.log('[health_api] 后端服务已就绪')
+        return true
+      } catch (error) {
+        console.log(`[health_api] 后端服务未就绪，等待 ${retryInterval}ms 后重试...`)
+        await new Promise(resolve => setTimeout(resolve, retryInterval))
+      }
+    }
+    
+    console.error('[health_api] 后端服务等待超时')
+    return false
+  }
+}
+

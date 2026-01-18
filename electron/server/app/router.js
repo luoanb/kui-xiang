@@ -7,6 +7,10 @@ module.exports = app => {
   // 测试接口
   router.get('/', controller.home.index)
 
+  // 健康检查接口
+  router.get('/api/health', controller.health.check)
+  router.get('/api/health/ping', controller.health.ping)
+
   router.post('/api/local/chat', controller.chat.sendMessageLocal)
   router.get('/api/chat/:id', controller.chat.history)
   router.post('/api/session/new', controller.chat.createSession)
