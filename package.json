@@ -63,7 +63,7 @@
     "autoprefixer": "^10.4.20",
     "egg-bin": "^6.13.0",
     "electron": "^29.1.1",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^26.4.0",
     "eslint": "8",
     "eslint-config-egg": "13",
     "glob": "^11.0.1",
