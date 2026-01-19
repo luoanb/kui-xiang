@@ -68,97 +68,120 @@ export default defineConfig(({ command }) => {
                   format: 'cjs',
                 },
                 plugins: [
-                  {
-                    name: 'copy-server',
-                    writeBundle() {
-                      const srcDir = path.join(__dirname, 'electron/server')
-                      const destDir = path.join(
-                        __dirname,
-                        'dist-electron/server',
-                      )
-                      
-                      // console.log('[build] 复制 server 目录:', srcDir, '->', destDir)
-                      
-                      fs.cpSync(srcDir, destDir, {
-                        recursive: true,
-                        filter: src => {
-                          // 排除 node_modules 和日志文件
-                          return (
-                            !src.includes('node_modules') &&
-                            !src.endsWith('.log') &&
-                            !src.includes('run') &&
-                            !src.includes('.vercel') &&
-                            !src.includes('.vscode') &&
-                            !src.includes('run') &&
-                            !src.includes('.vercel') &&
-                            !src.includes('.vscode') &&
-                            !src.includes('logs') &&
-                            !src.includes('npm-debug.log') &&
-                            !src.includes('yarn-error.log') &&
-                            !src.includes('coverage') &&
-                            !src.includes('.idea') &&
-                            !src.includes('.DS_Store') &&
-                            !src.endsWith('.sw') &&
-                            !src.endsWith('.un~') &&
-                            !src.includes('typings') &&
-                            !src.includes('.nyc_output') &&
-                            !src.includes('database') &&
-                            !src.endsWith('.db')
-                          )
-                        },
-                      })
-                      
-                      // 验证关键文件是否被复制
-                      const criticalFiles = [
-                        path.join(destDir, 'app', 'service', 'mcp.config.default.json'),
-                        path.join(destDir, 'scripts', 'updateSQl', 'init', 'llm_providers.sql'),
-                        path.join(destDir, 'scripts', 'updateSQl', 'init', 'llm_models.sql'),
-                      ]
-                      
-                      for (const file of criticalFiles) {
-                        // if (fs.existsSync(file)) {
-                        //   console.log('[build] ✓ 关键文件已复制:', file)
-                        // } else {
-                        //   console.warn('[build] ✗ 关键文件缺失:', file)
-                        // }
-                      }
-                    },
-                  },
-                  {
-                    name: 'copy-llama-cpp',
-                    writeBundle() {
-                      const srcDir = path.join(__dirname, 'electron/main/bin')
-                      const destDir = path.join(
-                        __dirname,
-                        'dist-electron/main/bin',
-                      )
-                      fs.cpSync(srcDir, destDir, {
-                        recursive: true,
-                      })
-                    },
-                  },
-                  {
-                    name: 'copy-package-json',
-                    writeBundle() {
-                      // 复制 package.json 到 dist-electron 目录，并修正 main 字段
-                      const pkgPath = path.join(__dirname, 'package.json')
-                      const destPath = path.join(
-                        __dirname,
-                        'dist-electron/package.json',
-                      )
-                      // 读取并修改 package.json
-                      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
-                      // 修正 main 字段：相对于 dist-electron 目录
-                      pkg.main = 'main/index.js'
-                      // 写回文件
-                      fs.writeFileSync(
-                        destPath,
-                        JSON.stringify(pkg, null, 2) + '\n',
-                        'utf-8',
-                      )
-                    },
-                  },
-                ],
+          {
+            name: 'copy-package-to-server',
+            writeBundle() {
+              // 在构建时将根目录的 package.json 复制到 electron/server 目录
+              const pkgPath = path.join(__dirname, 'package.json')
+              const serverPkgPath = path.join(__dirname, 'electron/server/package.json')
+              
+              // 读取并复制 package.json
+              const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+              
+              // 可以根据需要修改复制到 server 目录的 package.json 内容
+              // 例如：移除不必要的字段或添加特定字段
+              
+              // 写回文件到 server 目录
+              fs.writeFileSync(
+                serverPkgPath,
+                JSON.stringify(pkg, null, 2) + '\n',
+                'utf-8',
+              )
+              
+              console.log('[build] ✓ 已将 package.json 复制到 electron/server 目录')
+            },
+          },
+          {
+            name: 'copy-server',
+            writeBundle() {
+              const srcDir = path.join(__dirname, 'electron/server')
+              const destDir = path.join(
+                __dirname,
+                'dist-electron/server',
+              )
+              
+              // console.log('[build] 复制 server 目录:', srcDir, '->', destDir)
+              
+              fs.cpSync(srcDir, destDir, {
+                recursive: true,
+                filter: src => {
+                  // 排除 node_modules 和日志文件
+                  return (
+                    !src.includes('node_modules') &&
+                    !src.endsWith('.log') &&
+                    !src.includes('run') &&
+                    !src.includes('.vercel') &&
+                    !src.includes('.vscode') &&
+                    !src.includes('run') &&
+                    !src.includes('.vercel') &&
+                    !src.includes('.vscode') &&
+                    !src.includes('logs') &&
+                    !src.includes('npm-debug.log') &&
+                    !src.includes('yarn-error.log') &&
+                    !src.includes('coverage') &&
+                    !src.includes('.idea') &&
+                    !src.includes('.DS_Store') &&
+                    !src.endsWith('.sw') &&
+                    !src.endsWith('.un~') &&
+                    !src.includes('typings') &&
+                    !src.includes('.nyc_output') &&
+                    !src.includes('database') &&
+                    !src.endsWith('.db')
+                  )
+                },
+              })
+              
+              // 验证关键文件是否被复制
+              const criticalFiles = [
+                path.join(destDir, 'app', 'service', 'mcp.config.default.json'),
+                path.join(destDir, 'scripts', 'updateSQl', 'init', 'llm_providers.sql'),
+                path.join(destDir, 'scripts', 'updateSQl', 'init', 'llm_models.sql'),
+              ]
+              
+              for (const file of criticalFiles) {
+                // if (fs.existsSync(file)) {
+                //   console.log('[build] ✓ 关键文件已复制:', file)
+                // } else {
+                //   console.warn('[build] ✗ 关键文件缺失:', file)
+                // }
+              }
+            },
+          },
+          {
+            name: 'copy-llama-cpp',
+            writeBundle() {
+              const srcDir = path.join(__dirname, 'electron/main/bin')
+              const destDir = path.join(
+                __dirname,
+                'dist-electron/main/bin',
+              )
+              fs.cpSync(srcDir, destDir, {
+                recursive: true,
+              })
+            },
+          },
+          {
+            name: 'copy-package-json',
+            writeBundle() {
+              // 复制 package.json 到 dist-electron 目录，并修正 main 字段
+              const pkgPath = path.join(__dirname, 'package.json')
+              const destPath = path.join(
+                __dirname,
+                'dist-electron/package.json',
+              )
+              // 读取并修改 package.json
+              const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+              // 修正 main 字段：相对于 dist-electron 目录
+              pkg.main = 'main/index.js'
+              // 写回文件
+              fs.writeFileSync(
+                destPath,
+                JSON.stringify(pkg, null, 2) + '\n',
+                'utf-8',
+              )
+            },
+          },
+        ],
               },
             },
           },

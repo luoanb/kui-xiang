@@ -40,7 +40,18 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "add-log-keys": "node scripts/add-log-keys.mjs",
-    "add-log-keys:dry": "node scripts/add-log-keys.mjs --dry"
+    "add-log-keys:dry": "node scripts/add-log-keys.mjs --dry",
+    "egg:start": "egg-scripts start --daemon --title=egg-server-server --baseDir=./electron/server",
+    "egg:stop": "egg-scripts stop --title=egg-server-server",
+    "egg:dev": "egg-bin dev --baseDir=./electron/server",
+    "egg:debug": "egg-bin debug --baseDir=./electron/server",
+    "egg:test": "npm run lint -- --fix && npm run egg:test:local",
+    "egg:test:local": "egg-bin test --baseDir=./electron/server",
+    "egg:cov": "egg-bin cov --baseDir=./electron/server",
+    "egg:migrate:up": "sequelize db:migrate --config=./electron/server/config/config.json --migrations-path=./electron/server/database/migrations",
+    "egg:migrate:down": "sequelize db:migrate:undo --config=./electron/server/config/config.json --migrations-path=./electron/server/database/migrations",
+    "egg:migrate:undo": "sequelize db:migrate:undo --config=./electron/server/config/config.json --migrations-path=./electron/server/database/migrations",
+    "egg:migrate:undo:all": "sequelize db:migrate:undo:all --config=./electron/server/config/config.json --migrations-path=./electron/server/database/migrations"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.3",
@@ -73,15 +84,11 @@
     "vue-i18n-extract": "^2.0.7",
     "vue-tsc": "^2.0.6"
   },
-  "packageManager": "pnpm@9.14.2+sha512.6e2baf77d06b9362294152c851c4f278ede37ab1eba3a55fda317a4a17b209f4dbb973fb250a77abc463a341fcb1f17f17cfa24091c4eb319cda0d9b84278387",
+  "packageManager": "npm",
   "dependencies": {
     "@analytics/google-analytics": "^1.1.0",
     "@lancedb/lancedb": "^0.19.0",
     "@modelcontextprotocol/sdk": "^1.9.0",
-    "@repo/agents": "workspace:*",
-    "@repo/eslint-config": "workspace:*",
-    "@repo/rag": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
     "@supabase/supabase-js": "^2.49.1",
     "@tanstack/vue-table": "^8.21.3",
     "@vee-validate/zod": "^4.15.0",
@@ -147,10 +154,11 @@
     "vee-validate": "^4.15.0",
     "vue-router": "4",
     "xlsx": "^0.18.5",
-    "ylru": "1.4.0",
+    "ylru": "2.0.0",
     "zod": "^3.24.2"
   },
   "overrides": {
-    "ylru": "1.4.0"
+    "cache-content-type": "2.1.0",
+    "utility": "2.5.0"
   }
 }
